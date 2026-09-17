@@ -15,68 +15,68 @@ from google.genai import types
 import os
 import time
 
-api_key = os.environ["GEMINI_API_KEY"]
-request = "How many vacation days do employees receive?"
-folder = "/Users/johanantony/Desktop/Rag POC/RAG-POC/Raw Data"
-context = "Context \n "
-embedder = Embed(folder)
-retrieval = Retrieval(
-    embedder.embed_request(request),
-    embedder.embed_data()
-    )
-context_list = retrieval.score_list(5)
-context = "\n\n".join(
-    chunk["text"]
-    for score, chunk in context_list
-)
-
-"""
-print("Retrieved chunks:")
-for score, chunk in context_list:
-    source = chunk["metadata"].get("source", "unknown")
-    print(f"- {score:.4f} {source}")
-"""
-
-context_window = f"""
-Use the following context to answer the question.
-
-Context:
-{context}
-
-Question:
-{request}
-"""
-
-client = genai.Client()
-
-config = types.GenerateContentConfig(
-    # the system instructions are currently built in here but i believe that it should be built better elswhere
-    system_instruction="""
-    You are a documentation assistant.
-    Answer using only the provided context.
-    If the context does not contain the answer,
-    say that you do not have enough information.
-    """
-)
-
-response = None
-for attempt in range(3):
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=context_window,
-            config=config
+def answer_request(request):
+    api_key = os.environ["GEMINI_API_KEY"]
+    folder = "/Users/johanantony/Desktop/Rag POC/RAG-POC/Raw Data"
+    context = "Context \n "
+    embedder = Embed(folder)
+    retrieval = Retrieval(
+        embedder.embed_request(request),
+        embedder.embed_data()
         )
-        break
-    except errors.APIError as error:
-        if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
-            raise
+    context_list = retrieval.score_list(5)
+    context = "\n\n".join(
+        chunk["text"]
+        for score, chunk in context_list
+    )
 
-        wait_seconds = 2 ** attempt
-        print(f"Gemini is temporarily unavailable ({error.code}). Retrying in {wait_seconds}s...")
-        time.sleep(wait_seconds)
+    """
+    print("Retrieved chunks:")
+    for score, chunk in context_list:
+        source = chunk["metadata"].get("source", "unknown")
+        print(f"- {score:.4f} {source}")
+    """
 
-if response is None:
-    raise RuntimeError("Gemini did not return a response.")
+    context_window = f"""
+    Use the following context to answer the question.
 
-print(response.text)
+    Context:
+    {context}
+
+    Question:
+    {request}
+    """
+
+    client = genai.Client()
+
+    config = types.GenerateContentConfig(
+        # the system instructions are currently built in here but i believe that it should be built better elswhere
+        system_instruction="""
+        You are a documentation assistant.
+        Answer using only the provided context.
+        If the context does not contain the answer,
+        say that you do not have enough information.
+        """
+    )
+
+    response = None
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=context_window,
+                config=config
+            )
+            break
+        except errors.APIError as error:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                raise
+
+            wait_seconds = 2 ** attempt
+            print(f"Gemini is temporarily unavailable ({error.code}). Retrying in {wait_seconds}s...")
+            time.sleep(wait_seconds)
+
+    if response is None:
+        raise RuntimeError("Gemini did not return a response.")
+
+    return response.text

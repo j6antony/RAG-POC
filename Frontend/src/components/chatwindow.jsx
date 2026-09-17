@@ -12,7 +12,7 @@ export default function ChatWindow({ messages, pending, onSelectQuestion, exampl
         <p>Type below or try an example.</p>
         <div className="suggestions">{examples.map((example) => <button key={example.question} onClick={() => onSelectQuestion(example.question)}><span>{example.question}</span></button>)}</div>
       </div> : <div className="messages" role="log" aria-live="polite" aria-relevant="additions">{messages.map((message) => <Message key={message.id} {...message} />)}</div>}
-      {pending && <div className="thinking" role="status">Preparing demo response<span className="loading-dots" aria-hidden="true">•••</span></div>}
+      {pending && <div className="thinking" role="status">Searching documents<span className="loading-dots" aria-hidden="true">•••</span></div>}
       <div ref={bottom} />
     </section>
   );
