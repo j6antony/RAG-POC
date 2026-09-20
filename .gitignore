@@ -1,0 +1,15 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+.env
+.venv/
+venv/
+
+__pycache__/
+*.pyc
+
+chroma_db/
+Raw Data/
+
+Frontend/node_modules/
+Frontend/dist/
+
+.DS_Store

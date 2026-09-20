@@ -21,6 +21,7 @@ class Chunk:
         self.folder = folder
 
     def get_chunks(self):
+        self.all_chunks = []
         #loading the files into the reader
         folder_path = Path(self.folder).glob("*.md")
 
@@ -51,8 +52,32 @@ class Chunk:
             #save all the chunks
             self.all_chunks.extend(chunks)
         return self.all_chunks
-
-
+    # this is not really neccessary in later edit probably want to clean this object up
+    def get_chunks_file(self, file):
+        headers_to_split_on = [
+                    ('#', "header 1"),
+                    ('##', "header 2"),
+                    ('###', "header 3")
+        ]
+        heading_splitter = MarkdownHeaderTextSplitter(
+                headers_to_split_on = headers_to_split_on,
+                strip_headers=True # do we want to strip the headers?
+        )
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size = 500,
+            chunk_overlap = 50
+        )
+        file = Path(file)
+        text = file.read_text(encoding="utf-8")
+        sections = heading_splitter.split_text(text)
+        # add the file name to the individual splits
+        for section in sections:
+            section.metadata["source"] = file.name
+        #break the splits into smaller pieces
+        chunks = text_splitter.split_documents(sections)
+        #save all the chunks
+        self.all_chunks.extend(chunks)
+        return chunks
 
 
 

@@ -6,23 +6,27 @@
 Issues:
 - Am I allowed to just use the prebuilt cosine_similarity function or do i have to build it myself using numpy
 """
-from sklearn.metrics.pairwise import cosine_similarity
+from storage import CHROMA_DIR, COLLECTION_NAME
+import chromadb
 
 class Retrieval:
-    def __init__(self,Request_vector, Vector_Database):
-        self.A = Request_vector
-        self.B = Vector_Database
-    def score_list (self, count):
-        result = []
-        for chunk in self.B:
-            score = cosine_similarity(
-                [self.A],
-                [chunk["vector"]]
-            )[0][0]
-            result.append((score, chunk))
-        #sort in ascending order
-        result.sort(key=lambda x: x[0], reverse=True)
-        return result[:count]
+    def __init__(self,Request_vector):
+        self.Request_vector = Request_vector
+        client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+        self.collection = client.get_or_create_collection(
+            name=COLLECTION_NAME
+        )
+    #if I choose to work with a chromadb vector database then the way to compare is using the inbuilt function
+    #note the chromadb uses l2 distance by defualt unless specifcied
+    def score_list_chroma (self, count):
+
+
+        results = self.collection.query(
+            query_embeddings=[self.Request_vector.tolist()],
+            n_results= count,
+            include = ["documents", "metadatas", "distances"]
+        )
+        return results
     
 
         

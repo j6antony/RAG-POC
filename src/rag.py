@@ -19,15 +19,11 @@ def answer_request(request):
     api_key = os.environ["GEMINI_API_KEY"]
     folder = "/Users/johanantony/Desktop/Rag POC/RAG-POC/Raw Data"
     context = "Context \n "
-    embedder = Embed(folder)
-    retrieval = Retrieval(
-        embedder.embed_request(request),
-        embedder.embed_data()
-        )
-    context_list = retrieval.score_list(5)
+    embedder = Embed()
+    retrieval = Retrieval(embedder.embed_request(request))
+    context_list = retrieval.score_list_chroma(5)
     context = "\n\n".join(
-        chunk["text"]
-        for score, chunk in context_list
+        context_list["documents"][0]
     )
 
     """
