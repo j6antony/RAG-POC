@@ -19,7 +19,7 @@ def answer_request(request):
     api_key = os.environ["GEMINI_API_KEY"]
     folder = "/Users/johanantony/Desktop/Rag POC/RAG-POC/Raw Data"
     context = "Context \n "
-    embedder = Embed(folder)
+    embedder = Embed("../Raw Data")
     retrieval = Retrieval(
         embedder.embed_request(request),
         embedder.embed_data()

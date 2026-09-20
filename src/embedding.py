@@ -10,27 +10,47 @@ Issues:
 """
 from sentence_transformers import SentenceTransformer
 from chunk import Chunk
+import chromadb
 class Embed:
     def __init__(self, folder):
         self.folder = folder
         #embedding model
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
     def embed_data(self):
+        #basically like the save location for the 
+        #the .. brings the folder out from src
+        client = chromadb.PersistentClient(path="../chroma_db")
+
+        #create a collection of vectors
+        collection = client.get_or_create_collection(name="manual_vectors")
+
         embedded_chunks = []
 
         #setup the chunking
         chunk = Chunk(self.folder)
         all_chunks = chunk.get_chunks()
         #iterate throuhgh all the chunks
-        for chunk in all_chunks:
+        for id, chunk in enumerate(all_chunks):
             vector = self.model.encode(chunk.page_content)
+            """
             # saving this seperatley is better as we are keeping the chunks light
             embedded_chunks.append({
                 "text": chunk.page_content,
                 "metadata": chunk.metadata,
                 "vector": vector
             })
-        return embedded_chunks
+            """
+            #this is simply like a creative way of making an id that won't overlap
+            chunk_id = f"{chunk.metadata['source']}_{id}"
+
+            collection.add(
+                embeddings=[vector],
+                documents=[chunk.page_content],
+                metadatas=[chunk.metadata],
+                ids=[chunk_id]
+            )
+
+        return collection
     def embed_request(self, request):
         vector = self.model.encode(request)
         return vector
