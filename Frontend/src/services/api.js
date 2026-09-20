@@ -1,6 +1,8 @@
 // Contract: askQuestion(question) -> { answer, sources: [{ title, section, text }] }
+const api_url = import.meta.env.VITE.api_url || "http://127.0.0.1:8000"
+
 export async function askQuestion(question) {
-  const response = await fetch('http://127.0.0.1:8000/chat', {
+  const response = await fetch('${api_url}/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -25,7 +27,7 @@ export async function uploadFile(file) {
 
   formData.append("file", file)
 
-  const response = await fetch('http://127.0.0.1:8000/upload', {
+  const response = await fetch('${api_url}/upload', {
     method: 'POST',
     body: formData,
   });
@@ -39,7 +41,7 @@ export async function uploadFile(file) {
 }
 
 export async function getFiles() {
-  const response = await fetch('http://127.0.0.1:8000/files', {
+  const response = await fetch('${api_url}/files', {
     method: "GET"
   });
 

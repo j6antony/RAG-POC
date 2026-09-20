@@ -156,42 +156,18 @@ More advanced RAG techniques can be added after the basic system is working.
 
 ---
 
-## Possible Technology Stack
+## Technology Stack
 
 The initial implementation may use:
 
 * **Python** — main application language
-* **PyMuPDF** — PDF text extraction
-* **Sentence Transformers or OpenAI Embeddings** — embedding generation
-* **ChromaDB or FAISS** — vector storage and similarity search
-* **OpenAI / Gemini / Claude / Local LLM** — response generation
-* **Streamlit** — optional simple user interface
+* **BAAI/bge-small-en-v1.5** — embedding generation
+* **ChromaDB** — vector storage and similarity search
+* **Gemini** — response generation
+* **React** — user interface
 
-The exact technologies may change during development.
 
 ---
-
-## Project Structure
-
-A possible project structure:
-
-```text
-rag-poc/
-│
-├── documents/
-│   ├── document1.pdf
-│   └── document2.pdf
-│
-├── src/
-│   ├── ingest.py
-│   ├── chunk.py
-│   ├── embeddings.py
-│   ├── retrieval.py
-│   └── rag.py
-│
-├── app.py
-├── requirements.txt
-└── README.md
 ```
 
 ### `ingest.py`
@@ -213,10 +189,6 @@ Searches the vector database for chunks relevant to the user's question.
 ### `rag.py`
 
 Combines the retrieved context with the user question and sends it to the LLM.
-
-### `app.py`
-
-Provides the main entry point or user interface for the application.
 
 ---
 
@@ -266,6 +238,9 @@ After the basic RAG system is working, possible improvements include:
 * Guardrails and output validation
 * Agentic RAG
 * Graph RAG
+* Add more compatability for more file types outside of markdown files
+* Add option to start new chats
+* Design so that multiple users wont have overlapping context
 
 ---
 
