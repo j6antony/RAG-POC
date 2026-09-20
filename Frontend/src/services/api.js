@@ -1,5 +1,3 @@
-import { resolvePath } from "react-router-dom";
-
 // Contract: askQuestion(question) -> { answer, sources: [{ title, section, text }] }
 export async function askQuestion(question) {
   const response = await fetch('http://127.0.0.1:8000/chat', {
@@ -23,7 +21,7 @@ export async function askQuestion(question) {
 
 export async function uploadFile(file) {
   // the reason we need to use a formdata here is becuase unlike with text, numbers and stuff you cannot just stringify the json here with files
-  const formData = new formData();
+  const formData = new FormData();
 
   formData.append("file", file)
 
@@ -35,13 +33,15 @@ export async function uploadFile(file) {
   const data = await response.json().catch(()=>null);
 
   if (!response.ok){
-    throw new Error("File upload failed");
+    throw new Error(typeof data?.detail === 'string' ? data.detail : 'File upload failed. Please try again.');
   }
   return data;
 }
 
 export async function getFiles() {
-  const response = await fetch('http://127.0.0.1:8000/upload');
+  const response = await fetch('http://127.0.0.1:8000/files', {
+    method: "GET"
+  });
 
   const data = await response.json().catch(()=>null);
 
@@ -49,5 +49,8 @@ export async function getFiles() {
     throw new Error("Could not load available files")
   };
 
-  return data.files;
+  if (!Array.isArray(data?.files) || !data.files.every((file) => typeof file === 'string')) {
+    throw new Error('The backend returned an invalid document list.');
+  }
+  return [...new Set(data.files)].sort((a, b) => a.localeCompare(b));
 }

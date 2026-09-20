@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import ChatInput from './components/chatinput';
 import ChatWindow from './components/chatwindow';
+import DocumentPanel from './components/documentpanel';
 import { askQuestion } from './services/api';
 
 const exampleQuestions = [
@@ -57,6 +58,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <DocumentPanel />
       <main id="main" className="main-panel">
         <div className="chat-layout">
           <header className="conversation-header"><h1>Document chat</h1><button className="new-chat" onClick={resetChat}>New conversation</button></header>

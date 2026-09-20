@@ -41,13 +41,14 @@ def upload_file(file: UploadFile = File(...)):
     file_path = Data_Dir / file.filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)# the shutil thing is straight from chat
+    #call the function to re-emebed the database
     return {
         "message": "file uploaded successfully",
         "filename": file.filename
     }
 
 #response on backend to show the front end what files are in the knowledge base
-@app.post("/files")
+@app.get("/files")
 def files():
     files = []
     for file in Data_Dir.iterdir():
