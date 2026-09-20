@@ -8,50 +8,60 @@ Issues:
 - the list I have created here I am just using that as like the vector database not sure if this is correct
 - do i have to chunk the users request, like what if it is very huge
 """
+from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from chunk import Chunk
+from storage import DATA_DIR, CHROMA_DIR, COLLECTION_NAME, INDEX_LOCK
 import chromadb
+
+
 class Embed:
-    def __init__(self, folder):
-        self.folder = folder
-        #embedding model
+    def __init__(self, folder=DATA_DIR):
+        self.folder = Path(folder).resolve()
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-    def embed_data(self):
-        #basically like the save location for the 
-        #the .. brings the folder out from src
-        client = chromadb.PersistentClient(path="../chroma_db")
 
-        #create a collection of vectors
-        collection = client.get_or_create_collection(name="manual_vectors")
+    def _collection(self):
+        client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+        return client.get_or_create_collection(name=COLLECTION_NAME)
 
-        embedded_chunks = []
-
-        #setup the chunking
-        chunk = Chunk(self.folder)
-        all_chunks = chunk.get_chunks()
-        #iterate throuhgh all the chunks
-        for id, chunk in enumerate(all_chunks):
-            vector = self.model.encode(chunk.page_content)
-            """
-            # saving this seperatley is better as we are keeping the chunks light
-            embedded_chunks.append({
-                "text": chunk.page_content,
-                "metadata": chunk.metadata,
-                "vector": vector
-            })
-            """
-            #this is simply like a creative way of making an id that won't overlap
-            chunk_id = f"{chunk.metadata['source']}_{id}"
-
-            collection.add(
-                embeddings=[vector],
-                documents=[chunk.page_content],
-                metadatas=[chunk.metadata],
-                ids=[chunk_id]
+    def _index_file(self, collection, file):
+        chunks = Chunk(self.folder).get_chunks_file(file)
+        ids = [f"{file.name}_{index}" for index in range(len(chunks))]
+        # Finish encoding before changing the existing index. A failed model
+        # call must not remove the document's previous chunks.
+        vectors = [self.model.encode(chunk.page_content).tolist() for chunk in chunks]
+        previous = collection.get(where={"source": file.name}, include=[])["ids"]
+        if chunks:
+            collection.upsert(
+                ids=ids,
+                embeddings=vectors,
+                documents=[chunk.page_content for chunk in chunks],
+                metadatas=[chunk.metadata for chunk in chunks],
             )
+        # Also removes legacy bulk IDs and surplus chunks when a file shrinks
+        # or becomes empty. Other documents are left alone.
+        stale = sorted(set(previous) - set(ids))
+        if stale:
+            collection.delete(ids=stale)
 
-        return collection
+    def embed_data(self):
+        if not self.folder.is_dir():
+            raise FileNotFoundError(f"Document folder does not exist: {self.folder}")
+        with INDEX_LOCK:
+            collection = self._collection()
+            for file in sorted(self.folder.glob("*.md")):
+                if file.is_file():
+                    self._index_file(collection, file)
+            return collection
+
     def embed_request(self, request):
-        vector = self.model.encode(request)
-        return vector
+        return self.model.encode(request)
 
+    def embed_data_file(self, data):
+        file = Path(data)
+        if not file.is_absolute():
+            file = self.folder / file
+        with INDEX_LOCK:
+            collection = self._collection()
+            self._index_file(collection, file)
+            return collection

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from pathlib import Path
 import shutil
 
+from embedding import Embed
 from rag import answer_request
 
 
@@ -42,6 +43,8 @@ def upload_file(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)# the shutil thing is straight from chat
     #call the function to re-emebed the database
+    embedder = Embed()
+    embedder.embed_data_file(file_path)
     return {
         "message": "file uploaded successfully",
         "filename": file.filename
