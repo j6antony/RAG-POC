@@ -13,7 +13,7 @@ class Retrieval:
     def __init__(self,Request_vector):
         self.Request_vector = Request_vector
         client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-        self.collection = client.get_collection(
+        self.collection = client.get_or_create_collection(
             name=COLLECTION_NAME
         )
     #if I choose to work with a chromadb vector database then the way to compare is using the inbuilt function

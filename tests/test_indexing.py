@@ -1,3 +1,4 @@
+#I believe that this is not actually a project stuff just a test script written by chat
 """Run with: .venv/bin/python -m unittest discover -s tests"""
 import os
 from pathlib import Path
