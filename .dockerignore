@@ -2,7 +2,7 @@
 
 .gitignore
 
-chromadb/
+chroma_db/
 Raw Data/
 
 Frontend/node_modules/

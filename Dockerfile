@@ -1,15 +1,18 @@
-From python:3.14-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
 
 #techinically it will work without --no-cache-dir but it is better to cleare the existing stuff especially since we are working with large dependencies
+RUN pip install --no-cache-dir torch==2.14.0 \
+    --index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src ./src
 
-RUN mkdir -p "/app/Raw Data" /app/chromadb
+RUN mkdir -p "/app/Raw Data" /app/chroma_db
 
 WORKDIR /app/src
 
