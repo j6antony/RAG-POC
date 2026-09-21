@@ -1,9 +1,10 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
 import shutil
+import supabase
 
 from embedding import Embed
 from rag import answer_request
@@ -47,6 +48,14 @@ app.add_middleware(
 #this is the backend response when a request is send by the user
 class ChatRequest(BaseModel):
     message:str
+class Auth(BaseModel):
+    email:str
+    password:str
+
+class info(BaseModel):
+    name: str
+    email: str
+    password: str
 
 @app.post("/chat")
 def chat(request: ChatRequest):
@@ -80,6 +89,50 @@ def files():
     return{
         "files": files
     }
+
+@app.post("/login")
+def login(input: Auth):
+    try:
+        response = supabase.auth.sign_in_with_password({
+            "email": input.email,
+            "password": input.password
+        })
+        if response.session is None:
+            return {
+                "requires_confirmation": True,
+                "message": "Check your email to confirm your account, then log in.",
+            }
+
+        return {
+            "requires_confirmation": False,
+            "user": {
+                "id": response.user.id,
+                "email": response.user.email,
+                "name": (response.user.user_metadata or {}).get("name")
+                        or response.user.email.split("@")[0],
+        },
+        "access_token": response.session.access_token,
+        }
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="invalid password or email"
+        )
+@app.post("/signup")
+def signup(input: info):
+
+    response = supabase.auth.sign_up({
+        "email": input.email,
+        "password": input.password,
+        "options": {
+            "data": {
+                "name": input.name
+            }
+        }
+    })
+
+    return response
+
 
 
 

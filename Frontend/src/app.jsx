@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import ChatInput from './components/chatinput';
 import ChatWindow from './components/chatwindow';
 import DocumentPanel from './components/documentpanel';
+import AuthPage from './components/authpage';
 import { askQuestion } from './services/api';
 
 const exampleQuestions = [
@@ -11,6 +12,12 @@ const exampleQuestions = [
 ];
 
 export default function App() {
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('rag-demo-user'));
+      return saved && typeof saved.name === 'string' ? { name: saved.name } : null;
+    } catch { return null; }
+  });
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(0);
   const [pending, setPending] = useState(false);
@@ -56,12 +63,25 @@ export default function App() {
     setError(null);
   }
 
+  function enterWorkspace(profile) {
+    try { sessionStorage.setItem('rag-demo-user', JSON.stringify(profile)); } catch { /* Session can work in memory. */ }
+    setUser(profile);
+  }
+
+  function signOut() {
+    resetChat();
+    try { sessionStorage.removeItem('rag-demo-user'); } catch { /* Storage may be unavailable. */ }
+    setUser(null);
+  }
+
+  if (!user) return <AuthPage onContinue={enterWorkspace} />;
+
   return (
     <div className="app-shell">
       <DocumentPanel />
       <main id="main" className="main-panel">
         <div className="chat-layout">
-          <header className="conversation-header"><h1>Document chat</h1><button className="new-chat" onClick={resetChat}>New conversation</button></header>
+          <header className="conversation-header"><div><h1>Document chat</h1><p className="account-caption">{user.name} <span>· Demo session</span></p></div><div className="header-actions"><button className="new-chat" onClick={resetChat}>New conversation</button><button className="new-chat" onClick={signOut}>Sign out</button></div></header>
           <ChatWindow messages={messages} pending={pending} onSelectQuestion={sendMessage} examples={exampleQuestions} />
           {error && <div className="error-notice" role="alert">{error.text}<button onClick={() => sendMessage(error.question, true)}>Retry</button></div>}
           <div className="composer-area"><ChatInput key={conversationId} onSendMessage={sendMessage} disabled={pending || Boolean(error)} /><p className="disclaimer">Answers come from your local RAG backend.</p></div>
