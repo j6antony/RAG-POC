@@ -58,11 +58,8 @@ class info(BaseModel):
 def chat(request: ChatRequest, autherization: str = Header(...)):
     user = get_current_user(autherization)
 
-    vectorDB = get_vectorDB()
-    embedding = get_embedder()
 
-    query_vector = embedding.embed_request(request.message)
-    answer = vectorDB.query(query_vector, user.id, 5)
+    answer = answer_request(request.message, user.id)
 
     return {
         "answer": answer
@@ -121,8 +118,21 @@ def signup(input: info):
             }
         }
     })
+    if response.session is None:
+        return {
+            "requires_confirmation": True,
+            "message": "Check your email to confirm your account."
+        }
 
-    return response
+    return {
+    "requires_confirmation": False,
+    "user": {
+        "id": response.user.id,
+        "email": response.user.email,
+        "name": (response.user.user_metadata or {}).get("name")
+    },
+    "access_token": response.session.access_token
+    }
 
 
 

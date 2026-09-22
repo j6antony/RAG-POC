@@ -8,7 +8,6 @@ Issues:
 - the list I have created here I am just using that as like the vector database not sure if this is correct
 - do i have to chunk the users request, like what if it is very huge
 """
-from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from chunk import Chunk
 from vectordb import VectorDB

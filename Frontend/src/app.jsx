@@ -15,11 +15,10 @@ export default function App() {
   const [user, setUser] = useState(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem('rag-demo-user'));
-      const token  = localStorage.getItem("access-token")
+      const token = localStorage.getItem("access_token");
       return saved && token && typeof saved.name === 'string'
           ? saved
           : null;
-      return saved && typeof saved.name === 'string' ? { name: saved.name } : null;
     } catch { return null; }
   });
   const [messages, setMessages] = useState([]);

@@ -25,7 +25,7 @@ class VectorDB:
             vectors=vectors,
             namespace=namespace
         )
-    def query(self, vector, namespace: int, top_k: int = 5):
+    def query(self, vector, namespace: int, top_k):
         return self.index.query(
             vector=vector,
             top_k=top_k,

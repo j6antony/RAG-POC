@@ -53,7 +53,6 @@ export async function submitPassword(email, password) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken()}`
     },
     body: JSON.stringify({email, password}),
   });
@@ -69,7 +68,6 @@ export async function signup(name, email, password) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken()}`
     },
     body: JSON.stringify({name, email, password}),
   });
