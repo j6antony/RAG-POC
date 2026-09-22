@@ -9,7 +9,7 @@ services:
     environment:
       GEMINI_API_KEY: "${GEMINI_API_KEY}"
       #PINECONE_KEY: "${Pinecone_Key}"
-      SUPABASE_URL: "https://wrffrrfvxzbmijmkwayh.supabase.co"
+      SUPABASE_URL: "${SUPABASE_URL}"
       SUPABASE_KEY: "${SUPABASE_KEY}"
 
     tmpfs:
