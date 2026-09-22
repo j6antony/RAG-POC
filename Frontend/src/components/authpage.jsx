@@ -33,6 +33,7 @@ export default function AuthPage({ onContinue }) {
           setNotice(result.message);
           return;
         }
+      localStorage.setItem("access_token", result.access_token);
       onContinue(result.user);
     } catch (error) {
       setError(error.message);

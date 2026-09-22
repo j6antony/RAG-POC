@@ -13,22 +13,7 @@ from vectordb import VectorDB
 class Retrieval:
     def __init__(self,Request_vector, id):
         self.Request_vector = Request_vector
-        client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-        self.collection = client.get_or_create_collection(
-            name=COLLECTION_NAME
-        )
         self.id = id
-    #if I choose to work with a chromadb vector database then the way to compare is using the inbuilt function
-    #note the chromadb uses l2 distance by defualt unless specifcied
-    def score_list_chroma (self, count):
-
-
-        results = self.collection.query(
-            query_embeddings=[self.Request_vector.tolist()],
-            n_results= count,
-            include = ["documents", "metadatas", "distances"]
-        )
-        return results
     def retrieve (self, vectorDB: VectorDB, count, id, request):
         return vectorDB.query(request, id, count)
     

@@ -1,15 +1,12 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
-from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from pathlib import Path
-import shutil
 from supabase import create_client, Client
 import os
 
 from embedding import Embed
 from rag import answer_request
-from storage import DATA_DIR
+from services import get_embedder, get_vectorDB
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -32,28 +29,7 @@ def get_current_user(authorization: str = Header(...)):
             status_code=401,
             detail="Invalid or expired token"
         )
-
-def clear_raw_data():
-
-    DATA_DIR.mkdir(exist_ok=True)
-
-    for path in DATA_DIR.iterdir():
-
-        if path.is_file():
-            path.unlink()
-
-        elif path.is_dir():
-            shutil.rmtree(path)
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-
-    # App starts
-    yield
-
-    # App shuts down
-    clear_raw_data()
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 #the middleware was required becuase the react front end exists in a different port so without this the communication would get blocked
 app.add_middleware(
     CORSMiddleware,
@@ -81,7 +57,13 @@ class info(BaseModel):
 @app.post("/chat")
 def chat(request: ChatRequest, autherization: str = Header(...)):
     user = get_current_user(autherization)
-    answer = answer_request(request.message, user.id)
+
+    vectorDB = get_vectorDB()
+    embedding = get_embedder()
+
+    query_vector = embedding.embed_request(request.message)
+    answer = vectorDB.query(query_vector, user.id, 5)
+
     return {
         "answer": answer
     }
@@ -91,30 +73,14 @@ def chat(request: ChatRequest, autherization: str = Header(...)):
 async def upload_file(file: UploadFile = File(...), autherization: str = Header(...)):
     user = get_current_user(autherization)
     contents = await file.read()
-    """
-    file_path = DATA_DIR / file.filename
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)# the shutil thing is straight from chat
-    """
     #call the function to re-emebed the database
-    embedder = Embed()
-    embedder.embed(file.filename, contents, user.id)
+    embedder = get_embedder()
+    vectorDB = get_vectorDB()
+    embedder.embed(file.filename, contents, user.id, vectorDB)
     return {
         "message": "file uploaded successfully",
         "filename": file.filename
     }
-
-#response on backend to show the front end what files are in the knowledge base
-@app.get("/files")
-def files():
-    files = []
-    for file in DATA_DIR.iterdir():
-        if file.is_file():
-            files.append(file.name)
-    return{
-        "files": files
-    }
-
 @app.post("/login")
 def login(input: Auth):
     try:

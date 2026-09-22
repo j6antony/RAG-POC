@@ -12,9 +12,7 @@ from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from chunk import Chunk
 from storage import DATA_DIR, CHROMA_DIR, COLLECTION_NAME, INDEX_LOCK
-import chromadb
 from pinecone import Pinecone, ServerlessSpec
-import os
 from vectordb import VectorDB
 
 
@@ -23,10 +21,9 @@ class Embed:
     def __init__(self):
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
-    def embed(self, filename, contents, id):
-        vectorDB = VectorDB("rag-poc", 384)
+    def embed(self, filename, contents, id, vectorDB: VectorDB):
 
-        chunks = self.chunk.get_chunks_file(contents)
+        chunks = self.chunk.get_chunks_file(contents, filename)
 
         texts = [chunk.page_content for chunk in chunks]
 

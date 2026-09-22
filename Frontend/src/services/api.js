@@ -9,7 +9,7 @@ export async function askQuestion(question) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken}`,
+      'Autherization': `Bearer ${getToken()}`,
     },
     body: JSON.stringify({ message: question }),
   });
@@ -36,7 +36,7 @@ export async function uploadFile(file) {
 
   const response = await fetch(`${api_url}/upload`, {
     method: 'POST',
-    headers: {'Autherization': `Bearer ${getToken}`,},
+    headers: {'Autherization': `Bearer ${getToken()}`,},
     body: formData,
   });
 
@@ -48,30 +48,12 @@ export async function uploadFile(file) {
   return data;
 }
 
-export async function getFiles() {
-  const response = await fetch(`${api_url}/files`, {
-    method: "GET", 
-    headers: {'Autherization': `Bearer ${getToken}`}
-  });
-
-  const data = await response.json().catch(()=>null);
-
-  if (!response.ok) {
-    throw new Error("Could not load available files")
-  };
-
-  if (!Array.isArray(data?.files) || !data.files.every((file) => typeof file === 'string')) {
-    throw new Error('The backend returned an invalid document list.');
-  }
-  return [...new Set(data.files)].sort((a, b) => a.localeCompare(b));
-}
-
 export async function submitPassword(email, password) {
   const response = await fetch(`${api_url}/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken}`
+      'Autherization': `Bearer ${getToken()}`
     },
     body: JSON.stringify({email, password}),
   });
@@ -87,7 +69,7 @@ export async function signup(name, email, password) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken}`
+      'Autherization': `Bearer ${getToken()}`
     },
     body: JSON.stringify({name, email, password}),
   });

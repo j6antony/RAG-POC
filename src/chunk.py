@@ -52,7 +52,7 @@ class Chunk:
             self.all_chunks.extend(chunks)
         return self.all_chunks
     # this is not really neccessary in later edit probably want to clean this object up
-    def get_chunks_file(self, file):
+    def get_chunks_file(self, file, filename):
         headers_to_split_on = [
                     ('#', "header 1"),
                     ('##', "header 2"),
@@ -70,7 +70,7 @@ class Chunk:
         sections = heading_splitter.split_text(text)
         # add the file name to the individual splits
         for section in sections:
-            section.metadata["source"] = file.name
+            section.metadata["source"] = filename
         #break the splits into smaller pieces
         chunks = text_splitter.split_documents(sections)
         #save all the chunks

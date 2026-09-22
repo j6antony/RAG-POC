@@ -14,11 +14,13 @@ from google.genai import errors
 from google.genai import types
 import os
 import time
-from vectordb import VectorDB
+from services import get_embedder, get_vectorDB
+
+
 
 def answer_request(request, user_id):
-    vectorDB = VectorDB("rag-poc", 384)
-    embedder = Embed()
+    vectorDB = get_vectorDB()
+    embedder = get_embedder()
     request_vector = embedder.embed_request(request).tolist()
     retrieval = Retrieval(request_vector, user_id)
     context_list = retrieval.retrieve(vectorDB, 5, user_id, request_vector)
