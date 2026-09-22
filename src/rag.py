@@ -15,9 +15,68 @@ import time
 from services import get_embedder, get_vectorDB
 
 
+def rewrite_query(history, request):
+    context = "\n".join(
+        f"{message['role']}: {message['content']}"
+        for message in history[-6:]
+    )
 
-def answer_request(request, user_id):
+    context_window = f"""
+        Conversation history:
+        {context}
+
+        Current user question:
+        {request}
+
+        Rewrite the current question so it can be understood without the conversation history.
+    """
+
+    client = genai.Client()
+
+    config = types.GenerateContentConfig(
+        system_instruction="""
+        You rewrite conversational user questions into standalone search queries.
+
+        Use the conversation history only to resolve references and missing context.
+
+        Do not answer the question.
+        Do not invent information.
+        Return only the rewritten standalone query.
+        """
+    )
+
+    response = None
+
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=context_window,
+                config=config
+            )
+            break
+
+        except errors.APIError as error:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                raise
+
+            wait_seconds = 2 ** attempt
+            print(
+                f"Gemini is temporarily unavailable "
+                f"({error.code}). Retrying in {wait_seconds}s..."
+            )
+            time.sleep(wait_seconds)
+
+    if response is None:
+        raise RuntimeError("Gemini did not return a response.")
+
+    return response.text.strip()
+
+def answer_request(request, history, user_id):
+    request = rewrite_query(history, request)
     vectorDB = get_vectorDB()
+    #track the last 6 requests
+
     embedder = get_embedder()
     request_vector = embedder.embed_request(request).tolist()
     retrieval = Retrieval(request_vector, user_id)

@@ -37,7 +37,7 @@ export default function App() {
     setError(null);
     if (!retry) setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'user', text: question }]);
     try {
-      const result = await askQuestion(question);
+      const result = await askQuestion(question, messages);
       if (currentRequest !== request.current) return;
       if (typeof result.answer !== 'string') throw new Error('Invalid response');
       setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', text: result.answer, sources: result.sources ?? [] }]);

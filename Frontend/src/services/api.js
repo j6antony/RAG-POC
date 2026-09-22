@@ -11,7 +11,7 @@ export async function askQuestion(question) {
       'Content-Type': 'application/json',
       'Autherization': `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ message: question }),
+    body: JSON.stringify({ message: question, history: history.slice(-6)}),
   });
 
   const data = await response.json().catch(() => null);

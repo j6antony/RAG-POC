@@ -52,13 +52,18 @@ class info(BaseModel):
     name: str
     email: str
     password: str
-
+class HistoryMessage(BaseModel):
+    role: str
+    text: str
+class ChatRequest(BaseModel):
+    message: str
+    history: list[HistoryMessage]
 @app.post("/chat")
 def chat(request: ChatRequest, autherization: str = Header(...)):
     user = get_current_user(autherization)
 
 
-    answer = answer_request(request.message, user.id)
+    answer = answer_request(request.message,request.history, user.id)
 
     return {
         "answer": answer
