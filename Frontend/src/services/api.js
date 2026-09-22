@@ -1,99 +1,89 @@
-// Contract: askQuestion(question) -> { answer, sources: [{ title, section, text }] }
-const api_url = "http://127.0.0.1:8000";
-// this would not work becuase token capture to early 
-//const token = localStorage.getItem("access_token");
+const apiUrl = (import.meta.env?.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const sessionKey = 'rag-session';
 
+export function clearSession() {
+  sessionStorage.removeItem(sessionKey);
+  sessionStorage.removeItem('rag-demo-user');
+  localStorage.removeItem('access_token');
+}
 
-export async function askQuestion(question) {
-  const response = await fetch(`${api_url}/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken}`,
-    },
-    body: JSON.stringify({ message: question }),
-  });
+export function getSession() {
+  try {
+    const session = JSON.parse(sessionStorage.getItem(sessionKey));
+    if (!session?.access_token || !session?.user?.id || !session?.user?.name ||
+        !Number.isFinite(session.expires_at) || session.expires_at * 1000 <= Date.now()) {
+      return null;
+    }
+    return session;
+  } catch { return null; }
+}
 
+export function saveSession(result) {
+  if (!result?.access_token || !result?.user?.id || !result?.user?.name ||
+      !Number.isFinite(result.expires_at) || result.expires_at * 1000 <= Date.now()) {
+    throw new Error('The server returned an incomplete session. Please log in again.');
+  }
+  clearSession();
+  sessionStorage.setItem(sessionKey, JSON.stringify({
+    user: result.user, access_token: result.access_token, expires_at: result.expires_at,
+  }));
+}
+
+export class SessionExpiredError extends Error {}
+
+async function request(path, { body, authenticated = false } = {}) {
+  const headers = {};
+  if (authenticated) {
+    const session = getSession();
+    if (!session) {
+      clearSession();
+      throw new SessionExpiredError('Your session has expired. Please log in again.');
+    }
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  if (!(body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  let response;
+  try {
+    response = await fetch(`${apiUrl}${path}`, {
+      method: 'POST', headers,
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('Could not reach the server. Check your connection and try again.');
+  }
   const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    // The question marks are like a wierd way of chaining conditional statements
-    const detail = data?.detail ?? response.statusText;
-    throw new Error(`Backend request failed with status ${response.status}: ${detail}`);
+  if (authenticated && response.status === 401) {
+    const currentSession = getSession();
+    if (!currentSession || currentSession.access_token === headers.Authorization.slice(7)) {
+      clearSession();
+      throw new SessionExpiredError('Your session has expired. Please log in again.');
+    }
+    throw new Error('This request belongs to a previous session.');
   }
-
-  return data;
-}
-
-function getToken() {
-  return localStorage.getItem("access_token");
-}
-export async function uploadFile(file) {
-  // the reason we need to use a formdata here is becuase unlike with text, numbers and stuff you cannot just stringify the json here with files
-  const formData = new FormData();
-
-  formData.append("file", file)
-
-  const response = await fetch(`${api_url}/upload`, {
-    method: 'POST',
-    headers: {'Autherization': `Bearer ${getToken}`,},
-    body: formData,
-  });
-
-  const data = await response.json().catch(()=>null);
-
-  if (!response.ok){
-    throw new Error(typeof data?.detail === 'string' ? data.detail : 'File upload failed. Please try again.');
+  if (!response.ok) {
+    const detail = typeof data?.detail === 'string' ? data.detail
+      : Array.isArray(data?.detail) ? data.detail.map((item) => item.msg).join(' ')
+      : `Request failed (${response.status}). Please try again.`;
+    throw new Error(detail);
   }
+  if (!data) throw new Error('The server returned an invalid response. Please try again.');
   return data;
 }
 
-export async function getFiles() {
-  const response = await fetch(`${api_url}/files`, {
-    method: "GET", 
-    headers: {'Autherization': `Bearer ${getToken}`}
-  });
-
-  const data = await response.json().catch(()=>null);
-
-  if (!response.ok) {
-    throw new Error("Could not load available files")
-  };
-
-  if (!Array.isArray(data?.files) || !data.files.every((file) => typeof file === 'string')) {
-    throw new Error('The backend returned an invalid document list.');
-  }
-  return [...new Set(data.files)].sort((a, b) => a.localeCompare(b));
+export function askQuestion(question) {
+  return request('/chat', { body: { message: question }, authenticated: true });
 }
 
-export async function submitPassword(email, password) {
-  const response = await fetch(`${api_url}/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken}`
-    },
-    body: JSON.stringify({email, password}),
-  });
-  const data = await response.json().catch(()=>null);
-  if (!response.ok) {
-    throw new Error ("incorrect email or password")
-  };
-  return data;
+export function uploadFile(file) {
+  const body = new FormData();
+  body.append('file', file);
+  return request('/upload', { body, authenticated: true });
 }
 
-export async function signup(name, email, password) {
-  const response = await fetch(`${api_url}/signup`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken}`
-    },
-    body: JSON.stringify({name, email, password}),
-  });
-  const data = await response.json().catch(()=>null);
-  if (!response.ok) {
-    throw new Error ("incorrect signup information")
-  };
-  return data;
+export function submitPassword(email, password) {
+  return request('/login', { body: { email, password } });
+}
+
+export function signup(name, email, password) {
+  return request('/signup', { body: { name, email, password } });
 }

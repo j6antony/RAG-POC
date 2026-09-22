@@ -1,3 +1,2 @@
-# this allows us to set up where the api instance is so we dont need to add it to the run command
 [tool.fastapi]
-entrypoint = "api:app"
+entrypoint = "src.api:app"
