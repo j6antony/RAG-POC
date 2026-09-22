@@ -1,6 +1,7 @@
 // Contract: askQuestion(question) -> { answer, sources: [{ title, section, text }] }
 const api_url = "http://127.0.0.1:8000";
-const token = localStorage.getItem("access_token");
+// this would not work becuase token capture to early 
+//const token = localStorage.getItem("access_token");
 
 
 export async function askQuestion(question) {
@@ -8,7 +9,7 @@ export async function askQuestion(question) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${token}`,
+      'Autherization': `Bearer ${getToken}`,
     },
     body: JSON.stringify({ message: question }),
   });
@@ -24,6 +25,9 @@ export async function askQuestion(question) {
   return data;
 }
 
+function getToken() {
+  return localStorage.getItem("access_token");
+}
 export async function uploadFile(file) {
   // the reason we need to use a formdata here is becuase unlike with text, numbers and stuff you cannot just stringify the json here with files
   const formData = new FormData();
@@ -32,7 +36,7 @@ export async function uploadFile(file) {
 
   const response = await fetch(`${api_url}/upload`, {
     method: 'POST',
-    headers: {'Autherization': `Bearer ${token}`,},
+    headers: {'Autherization': `Bearer ${getToken}`,},
     body: formData,
   });
 
@@ -47,7 +51,7 @@ export async function uploadFile(file) {
 export async function getFiles() {
   const response = await fetch(`${api_url}/files`, {
     method: "GET", 
-    headers: {'Autherization': `Bearer ${token}`}
+    headers: {'Autherization': `Bearer ${getToken}`}
   });
 
   const data = await response.json().catch(()=>null);
@@ -67,7 +71,7 @@ export async function submitPassword(email, password) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${token}`
+      'Autherization': `Bearer ${getToken}`
     },
     body: JSON.stringify({email, password}),
   });
@@ -83,7 +87,7 @@ export async function signup(name, email, password) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${token}`
+      'Autherization': `Bearer ${getToken}`
     },
     body: JSON.stringify({name, email, password}),
   });

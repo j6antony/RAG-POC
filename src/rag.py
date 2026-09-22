@@ -19,11 +19,12 @@ from vectordb import VectorDB
 def answer_request(request, user_id):
     vectorDB = VectorDB("rag-poc", 384)
     embedder = Embed()
-    request_vector = embedder.embed_request(request)
+    request_vector = embedder.embed_request(request).tolist()
     retrieval = Retrieval(request_vector, user_id)
     context_list = retrieval.retrieve(vectorDB, 5, user_id, request_vector)
     context = "\n\n".join(
-            context_list["documents"][0]
+        match["metadata"]["text"]
+        for match in context_list["matches"]
     )
 
 

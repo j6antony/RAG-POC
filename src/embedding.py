@@ -24,23 +24,27 @@ class Embed:
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
     def embed(self, filename, contents, id):
+        vectorDB = VectorDB("rag-poc", 384)
+
         chunks = self.chunk.get_chunks_file(contents)
-        embeddings = self.model.encode(chunks)
+
+        texts = [chunk.page_content for chunk in chunks]
+
+        embeddings = self.model.encode(texts)
 
         vectors = []
 
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-            vectors.append(
-                {
-                    "id": f"{filename}-{i}",
-                    "values": embedding.list(),
-                    "metadata": {
-                        "filename": filename,
-                        "text": chunk
-                    }
+            vectors.append({
+                "id": f"{filename}-{i}",
+                "values": embedding.tolist(),
+                "metadata": {
+                    "filename": filename,
+                    "text": chunk.page_content
                 }
-            )
-        VectorDB.upsert(
+            })
+
+        vectorDB.upsert(
             vectors=vectors,
             namespace=id
         )

@@ -66,8 +66,7 @@ class Chunk:
             chunk_size = 500,
             chunk_overlap = 50
         )
-        file = Path(file)
-        text = file.read_text(encoding="utf-8")
+        text = file.decode("utf-8")
         sections = heading_splitter.split_text(text)
         # add the file name to the individual splits
         for section in sections:
