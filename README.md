@@ -1,79 +1,261 @@
-# Document chat — RAG proof of concept
+# Basic RAG Proof of Concept
 
-React + FastAPI with Supabase authentication, Pinecone vector search, and Gemini answers.
+## Overview
 
-## Flow
+This project is a simple **Retrieval-Augmented Generation (RAG)** proof of concept.
 
-1. Sign up or log in with Supabase. If email confirmation is enabled, confirm your email before logging in.
-2. Upload a UTF-8 `.md` or `.txt` document (up to 5 MB).
-3. The backend splits its bytes in memory, embeds chunks with `BAAI/bge-small-en-v1.5`, and writes 384-dimensional vectors to Pinecone under the verified Supabase user ID.
-4. Questions search only that same user's namespace. Retrieved text goes to Gemini, and the frontend displays the answer and source excerpts.
+The goal is to allow a user to ask questions about a collection of documents and receive answers based on information retrieved from those documents.
 
-Original uploads are not saved locally. There is no file-list endpoint or document inventory. Pinecone can take a few seconds to make new vectors searchable.
+Instead of relying only on the LLM's existing knowledge, the system searches the provided documents for relevant information and adds that information to the model's context before generating a response.
 
-## Local setup
+## Basic Architecture
 
-Create a root `.env` containing:
+```text
+Documents
+   ↓
+Text Extraction
+   ↓
+Chunking
+   ↓
+Embeddings
+   ↓
+Vector Database
 
-```dotenv
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-supabase-key
-PINECONE_API_KEY=your-pinecone-key
-GEMINI_API_KEY=your-gemini-key
-PINECONE_INDEX=rag-poc
-GEMINI_MODEL=gemini-3.8-flash
+User Question
+   ↓
+Question Embedding
+   ↓
+Vector Search
+   ↓
+Relevant Chunks
+   ↓
+LLM Context
+   ↓
+Generated Answer
 ```
 
-Use a Gemini model ID available to your project. Keep these credentials on the backend. The existing Pinecone index must have 384 dimensions; a missing index is created in AWS `us-east-1` using cosine similarity.
+## How It Works
 
-From the repository root:
+### 1. Document Ingestion
 
-```sh
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-fastapi dev
+Documents such as PDFs or text files are loaded into the application.
+
+The text is extracted and divided into smaller sections called **chunks**.
+
+Example:
+
+```text
+Document
+   ↓
+Chunk 1
+Chunk 2
+Chunk 3
+Chunk 4
 ```
 
-The root `pyproject.toml` points to `src.api:app`. You can also run `uvicorn src.api:app --reload`. The embedding model is loaded on the first upload or question and cached for the process.
+Chunking makes it easier to retrieve only the information relevant to a user's question.
 
-In another terminal:
+### 2. Embeddings
 
-```sh
-cd Frontend
-npm ci
-npm run dev
+Each chunk is converted into an **embedding**.
+
+An embedding is a numerical representation of the meaning of the text.
+
+Text with similar meanings will generally have embeddings that are close together mathematically.
+
+### 3. Vector Storage
+
+The embeddings are stored inside a **vector database** along with information such as:
+
+* Original text
+* Document name
+* Page number
+* Chunk ID
+
+This allows the system to quickly search for chunks that are semantically similar to a user's question.
+
+### 4. User Query
+
+When the user asks a question, the question is also converted into an embedding.
+
+For example:
+
+```text
+"What is the company's vacation policy?"
 ```
 
-Open `http://localhost:5173`. Optionally set `VITE_API_URL` in `Frontend/.env` to change the default backend URL (`http://127.0.0.1:8000`).
+becomes a query embedding.
 
-For Docker, run `docker compose up --build` from the repository root. Compose passes the Supabase, Pinecone, and Gemini environment variables to the backend. No local document/vector volumes are needed.
+### 5. Retrieval
 
-## API
+The query embedding is compared with the stored document embeddings.
 
-| Route | Authentication | Purpose |
-| --- | --- | --- |
-| `POST /signup` | None | `{name, email, password}` → session or email-confirmation notice |
-| `POST /login` | None | `{email, password}` → session |
-| `POST /upload` | Bearer token | Multipart `file` → indexed filename and chunk count |
-| `POST /chat` | Bearer token | `{message}` → `{answer, sources}` |
+The system retrieves the most similar chunks.
 
-Both auth routes use the same response shape: `requires_confirmation`, plus either `message` or `user`, `access_token`, and `expires_at`. The UI keeps the session in tab-scoped session storage, clears it on sign out, and asks users to log in again after expiration. Passwords are never stored in browser storage. Sign out clears the local session; token refresh and server-side session revocation are not implemented.
+For example:
 
-## Checks
+```text
+Top 3 Retrieved Chunks
 
-```sh
-.venv/bin/python -m unittest discover -s tests
-cd Frontend
-npm test
-npm run build
+1. Vacation Policy - Page 4
+2. Employee Benefits - Page 7
+3. Time Off Policy - Page 2
 ```
 
-Regression tests mock cloud services and the embedding model. They check auth contracts, token validation, upload validation, namespace routing, chunk metadata, and source responses without creating accounts or modifying live cloud data.
+### 6. Context Construction
 
-## Current limitations
+The retrieved chunks are added to the LLM's context.
 
-- Only Markdown and plain text are supported; PDF extraction is not implemented.
-- Chat history is held in memory and clears on refresh or sign out.
-- Reuploading the same filename replaces its chunks and removes trailing chunks after successful writes. Pinecone updates are eventually consistent and are not atomic across batches; distributed concurrent uploads and document versioning are not implemented.
-- This is a proof of concept, not a production authentication or document-management platform.
+A simplified prompt may look like:
+
+```text
+You are an assistant answering questions using the provided context.
+
+Context:
+Employees receive 15 paid vacation days each year.
+
+Question:
+How many vacation days do employees receive?
+
+Answer:
+```
+
+### 7. Response Generation
+
+The LLM generates an answer using the retrieved information.
+
+Example:
+
+```text
+Employees receive 15 paid vacation days each year.
+```
+
+The system can also return the document or page where the information was retrieved.
+
+---
+
+## Initial POC Scope
+
+The first version of this project will focus on a basic RAG implementation.
+
+The POC will support:
+
+* Loading documents
+* Extracting document text
+* Splitting text into chunks
+* Creating embeddings
+* Storing embeddings in a vector database
+* Accepting user questions
+* Performing semantic similarity search
+* Retrieving relevant document chunks
+* Providing retrieved context to an LLM
+* Generating answers based on retrieved information
+* Returning document sources where possible
+
+More advanced RAG techniques can be added after the basic system is working.
+
+---
+
+## Technology Stack
+
+The initial implementation may use:
+
+* **Python** — main application language
+* **BAAI/bge-small-en-v1.5** — embedding generation
+* **ChromaDB** — vector storage and similarity search
+* **Gemini** — response generation
+* **React** — user interface
+
+
+---
+```
+
+### `ingest.py`
+
+Loads documents and extracts their text.
+
+### `chunk.py`
+
+Splits extracted text into smaller chunks.
+
+### `embeddings.py`
+
+Creates embeddings for document chunks.
+
+### `retrieval.py`
+
+Searches the vector database for chunks relevant to the user's question.
+
+### `rag.py`
+
+Combines the retrieved context with the user question and sends it to the LLM.
+
+---
+
+## Example
+
+A user may ask:
+
+```text
+What authentication methods are supported?
+```
+
+The application will:
+
+```text
+1. Convert the question into an embedding
+2. Search the vector database
+3. Retrieve the most relevant chunks
+4. Add those chunks to the LLM context
+5. Ask the LLM to answer the question
+6. Return the answer and relevant source
+```
+
+Example response:
+
+```text
+The system supports OAuth 2.0 and multi-factor authentication.
+
+Source:
+security_policy.pdf - Page 12
+```
+
+---
+
+## Future Improvements
+
+After the basic RAG system is working, possible improvements include:
+
+* Hybrid search using keyword search and vector search
+* Reranking retrieved documents
+* Query rewriting
+* Multi-query retrieval
+* Metadata filtering
+* Conversational RAG
+* Better chunking strategies
+* Context compression
+* Evaluation of retrieval quality
+* Guardrails and output validation
+* Agentic RAG
+* Graph RAG
+* Add more compatability for more file types outside of markdown files
+* Add option to start new chats
+* Design so that multiple users wont have overlapping context
+
+---
+
+## Purpose
+
+The purpose of this POC is not to create a production-ready RAG platform.
+
+The goal is to demonstrate and understand the core RAG pipeline:
+
+```text
+Retrieve relevant information
+        ↓
+Add it to the model's context
+        ↓
+Generate a grounded response
+```
+
+Once this basic pipeline is working and understood, more advanced retrieval and reasoning techniques can be introduced.

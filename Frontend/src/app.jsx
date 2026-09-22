@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import ChatInput from './components/chatinput';
 import ChatWindow from './components/chatwindow';
-import UploadDocument from './components/uploaddocument';
+import DocumentPanel from './components/documentpanel';
 import AuthPage from './components/authpage';
-import { askQuestion, clearSession, getSession, SessionExpiredError } from './services/api';
+import { askQuestion } from './services/api';
 
 const exampleQuestions = [
   { question: 'How many vacation days do I get?' },
@@ -12,8 +12,12 @@ const exampleQuestions = [
 ];
 
 export default function App() {
-  const [user, setUser] = useState(() => getSession()?.user ?? null);
-  const [sessionNotice, setSessionNotice] = useState('');
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('rag-demo-user'));
+      return saved && typeof saved.name === 'string' ? { name: saved.name } : null;
+    } catch { return null; }
+  });
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(0);
   const [pending, setPending] = useState(false);
@@ -35,11 +39,8 @@ export default function App() {
       if (typeof result.answer !== 'string') throw new Error('Invalid response');
       setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', text: result.answer, sources: result.sources ?? [] }]);
     } catch (error) {
+      console.error(error);
       if (currentRequest === request.current) {
-        if (error instanceof SessionExpiredError) {
-          signOut(error.message);
-          return;
-        }
         setError({
           question,
           text: error instanceof Error ? error.message : 'Something went wrong. Please try your question again.',
@@ -63,24 +64,24 @@ export default function App() {
   }
 
   function enterWorkspace(profile) {
-    setSessionNotice('');
+    try { sessionStorage.setItem('rag-demo-user', JSON.stringify(profile)); } catch { /* Session can work in memory. */ }
     setUser(profile);
   }
 
-  function signOut(notice = '') {
+  function signOut() {
     resetChat();
-    clearSession();
-    setSessionNotice(notice);
+    try { sessionStorage.removeItem('rag-demo-user'); } catch { /* Storage may be unavailable. */ }
     setUser(null);
   }
 
-  if (!user) return <AuthPage onContinue={enterWorkspace} sessionNotice={sessionNotice} />;
+  if (!user) return <AuthPage onContinue={enterWorkspace} />;
 
   return (
     <div className="app-shell">
+      <DocumentPanel />
       <main id="main" className="main-panel">
         <div className="chat-layout">
-          <header className="conversation-header"><div><h1>Document chat</h1><p className="account-caption">{user.name}</p></div><div className="header-actions"><UploadDocument onSessionExpired={signOut} /><button className="new-chat" onClick={resetChat}>New conversation</button><button className="new-chat" onClick={() => signOut()}>Sign out</button></div></header>
+          <header className="conversation-header"><div><h1>Document chat</h1><p className="account-caption">{user.name} <span>· Demo session</span></p></div><div className="header-actions"><button className="new-chat" onClick={resetChat}>New conversation</button><button className="new-chat" onClick={signOut}>Sign out</button></div></header>
           <ChatWindow messages={messages} pending={pending} onSelectQuestion={sendMessage} examples={exampleQuestions} />
           {error && <div className="error-notice" role="alert">{error.text}<button onClick={() => sendMessage(error.question, true)}>Retry</button></div>}
           <div className="composer-area"><ChatInput key={conversationId} onSendMessage={sendMessage} disabled={pending || Boolean(error)} /><p className="disclaimer">Answers come from your local RAG backend.</p></div>
