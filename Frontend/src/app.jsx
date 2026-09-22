@@ -15,6 +15,10 @@ export default function App() {
   const [user, setUser] = useState(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem('rag-demo-user'));
+      const token  = localStorage.getItem("access-token")
+      return saved && token && typeof saved.name === 'string'
+          ? saved
+          : null;
       return saved && typeof saved.name === 'string' ? { name: saved.name } : null;
     } catch { return null; }
   });
@@ -70,7 +74,12 @@ export default function App() {
 
   function signOut() {
     resetChat();
+
+
     try { sessionStorage.removeItem('rag-demo-user'); } catch { /* Storage may be unavailable. */ }
+
+    localStorage.removeItem("access-token");
+
     setUser(null);
   }
 

@@ -8,11 +8,9 @@
 """
 
 from retrieval import Retrieval
-from embedding import Embed
 from google import genai
 from google.genai import errors
 from google.genai import types
-import os
 import time
 from services import get_embedder, get_vectorDB
 

@@ -6,8 +6,7 @@
 Issues:
 - Am I allowed to just use the prebuilt cosine_similarity function or do i have to build it myself using numpy
 """
-from storage import CHROMA_DIR, COLLECTION_NAME
-import chromadb
+
 from vectordb import VectorDB
 
 class Retrieval:

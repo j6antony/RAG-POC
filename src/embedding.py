@@ -11,8 +11,6 @@ Issues:
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from chunk import Chunk
-from storage import DATA_DIR, CHROMA_DIR, COLLECTION_NAME, INDEX_LOCK
-from pinecone import Pinecone, ServerlessSpec
 from vectordb import VectorDB
 
 
