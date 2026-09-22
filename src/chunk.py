@@ -15,10 +15,9 @@ from pathlib import Path
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 class Chunk:
-    def __init__(self, folder):
+    def __init__(self):
         #master collection of all chunks
         self.all_chunks = []
-        self.folder = folder
 
     def get_chunks(self):
         self.all_chunks = []

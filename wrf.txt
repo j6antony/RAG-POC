@@ -1,0 +1,53 @@
+Assignment 1: Identify a Problem
+
+Part 1 – Explain Your Role 
+ 	Description
+Company Name and Business Interests AIDAS Technologies is a company that focuses on data and analytics, helping mid-sized organizations use enterprise data, AI, ML, analytics, and automation to improve decision-making and general operations. The company develops data and AI solutions that turn raw data into practical insights and automation. My internship focuses on learning how these technologies can be leveraged to create enterprise solutions
+Team’s Objectives 	My team’s main objective is to explore and develop practical data and AI solutions that can be used in enterprise environments. My current work includes understanding LLMs, as well as the technologies that surround them, such as semantic layers, RAG, AI guardrails, etc. I have also used these concepts to implement a small POC project.
+Your Responsibilities 	My position in product development involves researching and experimenting with AI and ML technologies and developing applications using Generative AI and LLMs. Additionally, I also work with surrounding technologies in this area. Outside of working with certain technologies, I am also responsible for performance analysis and optimization, technical documentation, solution architecture, and collaborating with team members.
+
+Part 2 – Brainstorm
+Problem #1 Description
+Inconsistent retrieval quality caused by different RAG retrieval configurations
+
+Problem #1	Explanation
+Scenarios Often, a large-scale project can involve a lot of research, experimentation, documentation, presentations, and other processes. Due to the many steps, information can end up spread across different notes, documents, code, and conversations. This can make it harder for a team member to understand what has been researched and what previous decisions have been made. Therefore, onboarding a new team member or sharing your work with a team member can be difficult because of this.
+Scope Mainly, this problem will affect team members in product development who are working on the same project or related projects. Although, over time, it could possibly become a company-wide documentation issue.
+Stakes The main thing at stake with this is the time of my team members, as they will spend more time looking through multiple sources to understand the ongoing work. Better documentation can make collaboration and knowledge transfer easier.
+Sources To solve this issue, the main sources I would refer to would be coworkers and supervisors. Additionally, I would look at any company policies regarding work documentation and knowledge transfer.
+
+Problem #2 Description
+Inconsistent processing of different document formats for a RAG knowledge base
+
+Problem #2	Explanation
+Scenarios Product development involves working with people of many different technical backgrounds, such as product managers, software engineers, and AI specialists. A technical concept that is clear to one person may not be as clear to someone from another area. This can make communication between team members very disconnected, as things like progress updates, technical limitations, and requirements may not come across clearly.
+Scope This would focus mainly on communication within a project team rather than communication across the whole company.
+Stakes Miscommunication can lead to delays, two people working on the same thing, or work that may not meet the project’s requirements. Improving team communication will raise the team’s overall efficiency.
+Sources	To gather information for this, I would mainly refer to coworkers or supervisors, observations from my meetings and project discussions, and research on communication between multidisciplinary teams.
+
+Problem #3 Description
+Lack of a consistent method for evaluating RAG responses
+
+Problem #3	Explanation
+Scenarios A good portion of my role is experimenting with new AI-related technologies and creating small POCs. This raises a problem, as there are many technologies and approaches to solving problems, and it is hard to decide which ones to proceed with after the initial experiment.
+Scope This scenario would mainly affect only the research and POC stage of a product development team.
+Stakes Without a clear criterion for choosing which projects to pursue, it can lead to team members working on approaches that may not be very effective, as well as not pursuing promising ideas. Overall, it would affect the team’s efficiency.
+Sources	Discussions with supervisors and coworkers, observations from current POC work, and looking at company and external documentation on project evaluation practices.
+
+Part 3 – Select your Problem
+I have opted to go with technical knowledge and project information being hard to organize and document properly when working with a team. My role involves researching new technologies, and I can often spread information across different files, notes, code, and conversations. This can make it hard for team members to understand my work and the project overall.
+I chose this specific problem because it is very relevant to my role. I've completed one of my first projects, and this is an issue I am currently addressing. Learning more about it will improve my efficiency and the quality of my work.
+
+Part 4 – Draft an Introduction
+Knowledge and project information can be created over the course of a project.
+AIDAS Technologies is a data and analytics company that helps organizations solve business-related problems using data, AI, and ML (AIDAS Technologies, n.d.). I am currently working as an intern at AIDAS in product development. My responsibilities include researching new technologies, developing proofs of concept, documenting my technical work, and working with team members. My work requires continuous research and experimentation, which means that a large amount of technical knowledge and context is required to understand the project.
+A huge challenge that arises from this role is keeping this technical information organized in an easily accessible format for everyone working on the project. My information may be stored across many different documents, code files, notes, and conversations. As a result, team members may need to spend additional time conducting research on their own and understanding work that has already been done. This creates duplicated effort and makes it difficult for someone new to the project to quickly understand the project.
+From my research, I have learned that this is a common issue in software and technical workplaces. Bjørnson and Dingsøyr (2008) describe software engineering as knowledge-intensive work and found that managing and sharing information is an important concern within software organizations. Their research also found that simply storing information is not sufficient, as both documented knowledge and knowledge held by individual team members should be considered. From this, it is clear that changing the way that project information is documented, organized, and shared can greatly reduce the barrier to collaboration that is present.
+The objective of this report will be to evaluate the methods available for organizing and sharing technical information within a product development team. Additionally, this report will recommend an approach that is optimal for communicating information to team members. The report will take into consideration factors such as accessibility, ease of use, consistency, and the amount of effort required to create and maintain the documentation. Improving these processes will reduce the time spent searching for information, avoid duplicate work, and improve team collaboration. Overall, this will increase the team’s efficiency.
+
+References in APA Format
+AIDAS Technologies. (n.d.). AIDAS: AI, analytics & intelligent automation solutions. https://www.aidastech.com/
+Packowski, S., Halilovic, I., Schlotfeldt, J., & Smith, T. (2024). Optimizing and evaluating enterprise retrieval-augmented generation (RAG): A content design perspective [Preprint]. arXiv. https://arxiv.org/abs/2410.12812
+
+
+

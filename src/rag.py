@@ -14,17 +14,18 @@ from google.genai import errors
 from google.genai import types
 import os
 import time
+from vectordb import VectorDB
 
-def answer_request(request):
-    api_key = os.environ["GEMINI_API_KEY"]
-    folder = "/Users/johanantony/Desktop/Rag POC/RAG-POC/Raw Data"
-    context = "Context \n "
+def answer_request(request, user_id):
+    vectorDB = VectorDB("rag-poc", 384)
     embedder = Embed()
-    retrieval = Retrieval(embedder.embed_request(request))
-    context_list = retrieval.score_list_chroma(5)
+    request_vector = embedder.embed_request(request)
+    retrieval = Retrieval(request_vector, user_id)
+    context_list = retrieval.retrieve(vectorDB, 5, user_id, request_vector)
     context = "\n\n".join(
-        context_list["documents"][0]
+            context_list["documents"][0]
     )
+
 
     """
     print("Retrieved chunks:")

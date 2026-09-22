@@ -1,11 +1,14 @@
 // Contract: askQuestion(question) -> { answer, sources: [{ title, section, text }] }
 const api_url = "http://127.0.0.1:8000";
+const token = localStorage.getItem("access_token");
+
 
 export async function askQuestion(question) {
   const response = await fetch(`${api_url}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Autherization': `Bearer ${token}`,
     },
     body: JSON.stringify({ message: question }),
   });
@@ -29,6 +32,7 @@ export async function uploadFile(file) {
 
   const response = await fetch(`${api_url}/upload`, {
     method: 'POST',
+    headers: {'Autherization': `Bearer ${token}`,},
     body: formData,
   });
 
@@ -42,7 +46,8 @@ export async function uploadFile(file) {
 
 export async function getFiles() {
   const response = await fetch(`${api_url}/files`, {
-    method: "GET"
+    method: "GET", 
+    headers: {'Autherization': `Bearer ${token}`}
   });
 
   const data = await response.json().catch(()=>null);
@@ -61,7 +66,8 @@ export async function submitPassword(email, password) {
   const response = await fetch(`${api_url}/login`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Autherization': `Bearer ${token}`
     },
     body: JSON.stringify({email, password}),
   });
@@ -76,7 +82,8 @@ export async function signup(name, email, password) {
   const response = await fetch(`${api_url}/signup`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Autherization': `Bearer ${token}`
     },
     body: JSON.stringify({name, email, password}),
   });

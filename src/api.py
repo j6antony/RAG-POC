@@ -1,16 +1,37 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
 import shutil
-import supabase
+from supabase import create_client, Client
+import os
 
 from embedding import Embed
 from rag import answer_request
 from storage import DATA_DIR
 
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase: Client = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
+
+def get_current_user(authorization: str = Header(...)):
+    token = authorization.replace("Bearer ", "")
+
+    try:
+        response = supabase.auth.get_user(token)
+        return response.user
+
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token"
+        )
 
 def clear_raw_data():
 
@@ -58,22 +79,26 @@ class info(BaseModel):
     password: str
 
 @app.post("/chat")
-def chat(request: ChatRequest):
-    answer = answer_request(request.message)
-
+def chat(request: ChatRequest, autherization: str = Header(...)):
+    user = get_current_user(autherization)
+    answer = answer_request(request.message, user.id)
     return {
         "answer": answer
     }
 
 #response on backend when a file is uploaded
 @app.post("/upload")
-def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), autherization: str = Header(...)):
+    user = get_current_user(autherization)
+    contents = await file.read()
+    """
     file_path = DATA_DIR / file.filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)# the shutil thing is straight from chat
+    """
     #call the function to re-emebed the database
     embedder = Embed()
-    embedder.embed_data_file(file_path)
+    embedder.embed(file.filename, contents, user.id)
     return {
         "message": "file uploaded successfully",
         "filename": file.filename

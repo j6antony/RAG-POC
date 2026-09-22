@@ -13,55 +13,38 @@ from sentence_transformers import SentenceTransformer
 from chunk import Chunk
 from storage import DATA_DIR, CHROMA_DIR, COLLECTION_NAME, INDEX_LOCK
 import chromadb
+from pinecone import Pinecone, ServerlessSpec
+import os
+from vectordb import VectorDB
 
 
 class Embed:
-    def __init__(self, folder=DATA_DIR):
-        self.folder = Path(folder).resolve()
+
+    def __init__(self):
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        self.chunk = Chunk()
+    def embed(self, filename, contents, id):
+        chunks = self.chunk.get_chunks_file(contents)
+        embeddings = self.model.encode(chunks)
 
-    def _collection(self):
-        client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-        return client.get_or_create_collection(name=COLLECTION_NAME)
+        vectors = []
 
-    def _index_file(self, collection, file):
-        chunks = Chunk(self.folder).get_chunks_file(file)
-        ids = [f"{file.name}_{index}" for index in range(len(chunks))]
-        # Finish encoding before changing the existing index. A failed model
-        # call must not remove the document's previous chunks.
-        vectors = [self.model.encode(chunk.page_content).tolist() for chunk in chunks]
-        previous = collection.get(where={"source": file.name}, include=[])["ids"]
-        if chunks:
-            collection.upsert(
-                ids=ids,
-                embeddings=vectors,
-                documents=[chunk.page_content for chunk in chunks],
-                metadatas=[chunk.metadata for chunk in chunks],
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            vectors.append(
+                {
+                    "id": f"{filename}-{i}",
+                    "values": embedding.list(),
+                    "metadata": {
+                        "filename": filename,
+                        "text": chunk
+                    }
+                }
             )
-        # Also removes legacy bulk IDs and surplus chunks when a file shrinks
-        # or becomes empty. Other documents are left alone.
-        stale = sorted(set(previous) - set(ids))
-        if stale:
-            collection.delete(ids=stale)
+        VectorDB.upsert(
+            vectors=vectors,
+            namespace=id
+        )
+    def embed_request(self, text):
+        return self.model.encode(text)
 
-    def embed_data(self):
-        if not self.folder.is_dir():
-            raise FileNotFoundError(f"Document folder does not exist: {self.folder}")
-        with INDEX_LOCK:
-            collection = self._collection()
-            for file in sorted(self.folder.glob("*.md")):
-                if file.is_file():
-                    self._index_file(collection, file)
-            return collection
 
-    def embed_request(self, request):
-        return self.model.encode(request)
-
-    def embed_data_file(self, data):
-        file = Path(data)
-        if not file.is_absolute():
-            file = self.folder / file
-        with INDEX_LOCK:
-            collection = self._collection()
-            self._index_file(collection, file)
-            return collection

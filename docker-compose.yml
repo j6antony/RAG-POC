@@ -15,7 +15,6 @@ services:
     tmpfs:
       - "/app/chroma_db"
       - "/app/Raw Data"
-
   frontend:
     build:
       context: ./Frontend
