@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 import os
 
-from embedding import Embed
 from rag import answer_request
 from services import get_embedder, get_vectorDB
 

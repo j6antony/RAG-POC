@@ -77,7 +77,7 @@ export default function App() {
 
     try { sessionStorage.removeItem('rag-demo-user'); } catch { /* Storage may be unavailable. */ }
 
-    localStorage.removeItem("access-token");
+    localStorage.removeItem("access_token");
 
     setUser(null);
   }
