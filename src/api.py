@@ -42,8 +42,6 @@ app.add_middleware(
 )
 # for scalability is better to implement the type with the BaseModel thing\
 #this is the backend response when a request is send by the user
-class ChatRequest(BaseModel):
-    message:str
 class Auth(BaseModel):
     email:str
     password:str

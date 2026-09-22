@@ -17,7 +17,7 @@ from services import get_embedder, get_vectorDB
 
 def rewrite_query(history, request):
     context = "\n".join(
-        f"{message['role']}: {message['content']}"
+        f"{message.role}: {message.text}"
         for message in history[-6:]
     )
 
