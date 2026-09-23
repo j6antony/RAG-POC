@@ -18,6 +18,6 @@ class Web:
                 url = result.url,
                 format="markdown"
             )
-            self.embedder.embed(result.title, page.content.encode("utf-8"), user_id)
+            self.embedder.embed(result.title, page.content.encode("utf-8"), user_id,self.vectorDB)
         results = self.vectorDB.query(vector, user_id, 5)
         return results
