@@ -13,6 +13,9 @@ from google.genai import errors
 from google.genai import types
 import time
 from services import get_embedder, get_vectorDB
+from web import Web
+
+
 
 
 def rewrite_query(history, request):
@@ -73,14 +76,21 @@ def rewrite_query(history, request):
     return response.text.strip()
 
 def answer_request(request, history, user_id, username):
+    retrival_threshold = 0.7
     request = rewrite_query(history, request)
     vectorDB = get_vectorDB()
+
     #track the last 6 requests
 
     embedder = get_embedder()
     request_vector = embedder.embed_request(request).tolist()
     retrieval = Retrieval(request_vector, user_id)
     context_list = retrieval.retrieve(vectorDB, 5, user_id, request_vector)
+    #this is how to decide wether to look for websources or not
+    if context_list[0].score < retrival_threshold:
+        web = Web()
+        context_list = web.search_embed(request, user_id, request_vector)
+
     context = "\n\n".join(
         match["metadata"]["text"]
         for match in context_list["matches"]
