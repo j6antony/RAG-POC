@@ -61,7 +61,7 @@ def chat(request: ChatRequest, autherization: str = Header(...)):
     user = get_current_user(autherization)
 
 
-    answer = answer_request(request.message,request.history, user.id)
+    answer = answer_request(request.message,request.history, user.id, user.user_metadata)
 
     return {
         "answer": answer

@@ -50,7 +50,7 @@ def rewrite_query(history, request):
     for attempt in range(3):
         try:
             response = client.models.generate_content(
-                model="gemini-3.8-flash",
+                model="gemini-3.5-flash-lite",
                 contents=context_window,
                 config=config
             )
@@ -72,7 +72,7 @@ def rewrite_query(history, request):
 
     return response.text.strip()
 
-def answer_request(request, history, user_id):
+def answer_request(request, history, user_id, username):
     request = rewrite_query(history, request)
     vectorDB = get_vectorDB()
     #track the last 6 requests
@@ -95,6 +95,7 @@ def answer_request(request, history, user_id):
     """
 
     context_window = f"""
+    you are speaking with a user named {username}
     Use the following context to answer the question.
 
     Context:
@@ -120,7 +121,7 @@ def answer_request(request, history, user_id):
     for attempt in range(3):
         try:
             response = client.models.generate_content(
-                model="gemini-3.8-flash",
+                model="gemini-3.5-flash-lite",
                 contents=context_window,
                 config=config
             )
