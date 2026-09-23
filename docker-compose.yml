@@ -11,6 +11,7 @@ services:
       PINECONE_API_KEY: "${PINECONE_API_KEY}"
       SUPABASE_URL: "${SUPABASE_URL}"
       SUPABASE_KEY: "${SUPABASE_KEY}"
+      BROWSERBASE_API_KEY: "${BROWSERBASE_API_KEY}"
 
   frontend:
     build:

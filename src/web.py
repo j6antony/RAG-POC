@@ -19,5 +19,5 @@ class Web:
                 format="markdown"
             )
             self.embedder.embed(result.title, page.content.encode("utf-8"), user_id)
-            results = self.vectorDB.query(vector, user_id, 5)
-            return results
+        results = self.vectorDB.query(vector, user_id, 5)
+        return results
