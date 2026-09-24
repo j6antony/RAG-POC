@@ -20,6 +20,7 @@ class Chunk:
         self.all_chunks = []
 
     def get_chunks(self):
+        print("getting chunks")
         self.all_chunks = []
         #loading the files into the reader
         folder_path = Path(self.folder).glob("*.md")
@@ -50,9 +51,11 @@ class Chunk:
             chunks = text_splitter.split_documents(sections)
             #save all the chunks
             self.all_chunks.extend(chunks)
+        print("got chunks")
         return self.all_chunks
     # this is not really neccessary in later edit probably want to clean this object up
     def get_chunks_file(self, file, filename):
+        print("chunking file")
         headers_to_split_on = [
                     ('#', "header 1"),
                     ('##', "header 2"),
@@ -75,6 +78,8 @@ class Chunk:
         chunks = text_splitter.split_documents(sections)
         #save all the chunks
         self.all_chunks.extend(chunks)
+        print("file chunked")
+        print(f"Chunks: {len(self.all_chunks)}")
         return chunks
 
 

@@ -7,11 +7,14 @@ class Web:
         self.bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
         self.embedder = get_embedder()
         self.vectorDB = get_vectorDB()
-    def search_embed(self, request: str, user_id: str, vector):
+    def search(self, request: str):
         response = self.bb.search.web(
             query=request,
-            num_results= 5
+            num_results=5
         )
+        return response
+    def search_embed(self, response, user_id: str):
+        
 
         for result in response.results:
             page = self.bb.fetch_api.create(
@@ -19,5 +22,3 @@ class Web:
                 format="markdown"
             )
             self.embedder.embed(result.title, page.content.encode("utf-8"), user_id,self.vectorDB)
-        results = self.vectorDB.query(vector, user_id, 5)
-        return results

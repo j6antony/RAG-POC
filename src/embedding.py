@@ -19,6 +19,7 @@ class Embed:
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
     def embed(self, filename, contents, id, vectorDB: VectorDB):
+        print("started embedding")
 
         chunks = self.chunk.get_chunks_file(contents, filename)
 
@@ -37,11 +38,17 @@ class Embed:
                     "text": chunk.page_content
                 }
             })
+        # the reason this is required is sometimes the scraped website may give you no data then there is not point in doing and uspert and the uspert will fail which is why I 
+        # have implemented this saftey check. The problem with this is that the websearch will give you nothing so the LLM will really not get any quality context
+        if not vectors:
+            print(f"No vectors generated for {filename}, skipping upsert")
+            return []
 
         vectorDB.upsert(
             vectors=vectors,
             namespace=id
         )
+        print("finished embedding")
     def embed_request(self, text):
         return self.model.encode(text)
 

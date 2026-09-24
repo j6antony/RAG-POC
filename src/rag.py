@@ -14,6 +14,7 @@ from google.genai import types
 import time
 from services import get_embedder, get_vectorDB
 from web import Web
+import asyncio
 
 
 
@@ -75,7 +76,7 @@ def rewrite_query(history, request):
 
     return response.text.strip()
 
-def answer_request(request, history, user_id, username):
+async def answer_request(request, history, user_id, username):
     retrival_threshold = 0.7
     request = rewrite_query(history, request)
     vectorDB = get_vectorDB()
@@ -90,12 +91,21 @@ def answer_request(request, history, user_id, username):
     matches = context_list["matches"]
     if not matches or matches[0]["score"] < retrival_threshold:
         web = Web()
-        context_list = web.search_embed(request, user_id, request_vector)
+        context_list = web.search(request)
 
-    context = "\n\n".join(
-        match["metadata"]["text"]
-        for match in context_list["matches"]
-    )
+        asyncio.create_task(
+            web.search_embed(context_list, user_id)
+        )
+
+        context = "\n\n".join(
+            result["text"]
+            for result in context_list
+        )
+    else:
+        context = "\n\n".join(
+            match["metadata"]["text"]
+            for match in context_list["matches"]
+        )
 
 
     """
@@ -106,7 +116,7 @@ def answer_request(request, history, user_id, username):
     """
 
     context_window = f"""
-    you are speaking with a user named {username}
+    you are speaking with a user named {username} who is a student of University of Waterloo
     Use the following context to answer the question.
 
     Context:

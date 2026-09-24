@@ -21,11 +21,14 @@ class VectorDB:
 
         self.index = pc.Index(index_name)
     def upsert(self, vectors, namespace:str):
+        print("uploading to pinecone")
         self.index.upsert(
             vectors=vectors,
             namespace=namespace
         )
+        print("uploaded to pinecone")
     def query(self, vector, namespace: str, top_k):
+        print("requesting pinecone")
         return self.index.query(
             vector=vector,
             top_k=top_k,
