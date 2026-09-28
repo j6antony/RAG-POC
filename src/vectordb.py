@@ -27,14 +27,15 @@ class VectorDB:
             namespace=namespace
         )
         print("uploaded to pinecone")
-    def query(self, vector, namespace: str, top_k, user_access):
+    def query(self, vector, namespace: str, top_k, user_access, user_id):
         print("requesting pinecone")
         return self.index.query(
             vector=vector,
             top_k=top_k,
             include_metadata=True,
             namespace=namespace,
-            #the given filter looks for vectors with <= user_access
+            # lower-level content is visible to higher-level users;
+            # same-level content is only visible to its owner
             filter = {
                 "$or": [
                     {
