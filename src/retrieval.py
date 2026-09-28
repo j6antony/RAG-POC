@@ -17,7 +17,7 @@ class Retrieval:
     def retrieve (self, vectorDB: VectorDB, count, id, request):
         #this is very inefficient just for simplicity sake i have done it like this us ai to fix this it is very simple just tedious
         user_access = get_user_access(id)
-        return vectorDB.query(request, id, count, user_access)
+        return vectorDB.query(request, "company", count, user_access, id)
     
     
 
