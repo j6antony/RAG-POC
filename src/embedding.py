@@ -18,7 +18,7 @@ class Embed:
     def __init__(self):
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
-    def embed(self, filename, contents, id, vectorDB: VectorDB):
+    def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int):
         print("started embedding")
 
         chunks = self.chunk.get_chunks_file(contents, filename)
@@ -35,7 +35,8 @@ class Embed:
                 "values": embedding.tolist(),
                 "metadata": {
                     "filename": filename,
-                    "text": chunk.page_content
+                    "text": chunk.page_content,
+                    "access_level": access_level
                 }
             })
         # the reason this is required is sometimes the scraped website may give you no data then there is not point in doing and uspert and the uspert will fail which is why I 

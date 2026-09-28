@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from uuid import UUID
@@ -7,6 +7,7 @@ import os
 
 from rag import answer_request
 from services import get_embedder, get_vectorDB
+from authentification import get_user_access
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -71,13 +72,16 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
 
 #response on backend when a file is uploaded
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...), autherization: str = Header(...)):
+async def upload_file(file: UploadFile = File(...), autherization: str = Header(...), access_level = Form(...)):
     user = get_current_user(autherization)
+    user_access = get_user_access(user.id)
+    if user_access not in [1, 2, 3] or access_level > user_access:
+        raise HTTPException(status_code=400, detail="Invalid Access Level")
     contents = await file.read()
     #call the function to re-emebed the database
     embedder = get_embedder()
     vectorDB = get_vectorDB()
-    embedder.embed(file.filename, contents, user.id, vectorDB)
+    embedder.embed(file.filename, contents, user.id, vectorDB, access_level)
     return {
         "message": "file uploaded successfully",
         "filename": file.filename

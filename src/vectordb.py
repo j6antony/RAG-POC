@@ -27,15 +27,21 @@ class VectorDB:
             namespace=namespace
         )
         print("uploaded to pinecone")
-    def query(self, vector, namespace: str, top_k):
+    def query(self, vector, namespace: str, top_k, user_access):
         print("requesting pinecone")
         return self.index.query(
             vector=vector,
             top_k=top_k,
             include_metadata=True,
-            namespace=namespace
+            namespace=namespace,
+            #the given filter looks for vectors with <= user_access
+            filter={
+                "access_level": {
+                    "$lte": user_access
+                }
+            }
         )
-
+    
 
 
 

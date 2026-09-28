@@ -19,6 +19,7 @@ import json
 import logging
 from collections import deque
 from functools import lru_cache
+import supabase
 
 
 
