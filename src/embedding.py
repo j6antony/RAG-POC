@@ -36,6 +36,7 @@ class Embed:
                 "metadata": {
                     "filename": filename,
                     "text": chunk.page_content,
+                    "owner_id": str(id),
                     "access_level": access_level
                 }
             })
@@ -47,7 +48,7 @@ class Embed:
 
         vectorDB.upsert(
             vectors=vectors,
-            namespace=id
+            namespace="company"
         )
         print("finished embedding")
     def embed_request(self, text):

@@ -35,13 +35,31 @@ class VectorDB:
             include_metadata=True,
             namespace=namespace,
             #the given filter looks for vectors with <= user_access
-            filter={
-                "access_level": {
-                    "$lte": user_access
-                }
+            filter = {
+                "$or": [
+                    {
+                        "access_level": {
+                            "$lt": user_access
+                        }
+                    },
+                    {
+                        "$and": [
+                            {
+                                "access_level": {
+                                    "$eq": user_access
+                                }
+                            },
+                            {
+                                "owner_id": {
+                                    "$eq": str(user_id)
+                                }
+                            }
+                        ]
+                    }
+                ]
             }
         )
-    
+
 
 
 
