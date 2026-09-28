@@ -19,7 +19,6 @@ import json
 import logging
 from collections import deque
 from functools import lru_cache
-import supabase
 
 
 
@@ -136,13 +135,20 @@ def rewrite_query(history, request):
 
     return response.text.strip()
 
-async def answer_request(request, history, user_id, username, conversation_id):
+async def answer_request(request, history, user_id, username, conversation_id, user_access):
     request = await asyncio.to_thread(rewrite_query, history, request)
     vectorDB = await asyncio.to_thread(get_vectorDB)
     embedder = await asyncio.to_thread(get_embedder)
     request_vector = (await asyncio.to_thread(embedder.embed_request, request)).tolist()
     retrieval = Retrieval(request_vector, user_id)
-    context_list = await asyncio.to_thread(retrieval.retrieve, vectorDB, 5, user_id, request_vector)
+    context_list = await asyncio.to_thread(
+        retrieval.retrieve,
+        vectorDB,
+        5,
+        user_id,
+        request_vector,
+        user_access
+    )
     matches = context_list["matches"]
     state = get_conversation_state(user_id, conversation_id)
     route = await asyncio.to_thread(decide_route, request, matches, history, state)
@@ -154,7 +160,7 @@ async def answer_request(request, history, user_id, username, conversation_id):
         web = await asyncio.to_thread(Web)
         pages = await asyncio.to_thread(web.search, request)
         contexts.extend(page["text"] for page in pages)
-        asyncio.create_task(asyncio.to_thread(web.search_embed, pages, user_id))
+        asyncio.create_task(asyncio.to_thread(web.search_embed, pages, user_id, user_access))
 
     response = await asyncio.to_thread(feedtoai, username, "\n\n".join(contexts), request)
     state.update(matches[0]["score"] if matches else 0.0, route)
