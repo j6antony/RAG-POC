@@ -1,7 +1,6 @@
 from services import get_embedder, get_vectorDB
 from browserbase import Browserbase
 import os
-from authentification import get_user_access
 
 class Web:
     def __init__(self):
@@ -26,7 +25,6 @@ class Web:
                     "text": page.content
                 })
         return pages
-    def search_embed(self, pages, user_id: str):
-        user_access = get_user_access(user_id)
+    def search_embed(self, pages, user_id: str, user_access: int):
         for page in pages:
             self.embedder.embed(page["title"], page["text"].encode("utf-8"), user_id,self.vectorDB, user_access)
