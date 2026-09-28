@@ -1,6 +1,4 @@
-import supabase
-
-def get_user_role(user_id):
+def get_user_role(supabase, user_id):
     role = (
         supabase.table("user_roles")
         .select("role")
@@ -12,10 +10,10 @@ def get_user_role(user_id):
     """
     if role.data:
         return role.data[0]["role"]
-    # if no role assign and automatic default of user class
+    # if no role assign an automatic default of user class
     return "user"
 
-def get_user_permissions(role):
+def get_user_permissions(supabase, role):
     response = (
         supabase.table("role_permissions")
         .select("permission")
@@ -23,7 +21,7 @@ def get_user_permissions(role):
         .execute()
     )
     """
-    This will return like [ {permission: "chat"}, {permission: "upload_document}, {permission: "web_search}]
+    This will return like [ {permission: "chat"}, {permission: "upload_document"}, {permission: "web_search"}]
     so iterate through and extract the permissions
     """
     permissions = []
@@ -31,16 +29,15 @@ def get_user_permissions(role):
         permissions.append(i["permission"])
     return permissions
 
-def get_user_access(user_id):
+def get_user_access(supabase, user_id):
     ROLE_ACCESS_LEVELS = {"user": 1, "manager": 2, "admin": 3}
-    role = get_user_role(user_id)
-    # no defualt value required for the get statement
+    role = get_user_role(supabase, user_id)
     return ROLE_ACCESS_LEVELS.get(role)
 
-#this function will be useful for further implementation but as of now it is useless
-def has_permission(user_id, action):
-    role = get_user_role(user_id)
-    permissions = get_user_permissions(role)
+# this function will be useful for further implementation but as of now it is unused
+def has_permission(supabase, user_id, action):
+    role = get_user_role(supabase, user_id)
+    permissions = get_user_permissions(supabase, role)
     if action in permissions:
         return True
     return False
