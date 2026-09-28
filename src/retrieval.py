@@ -13,8 +13,8 @@ class Retrieval:
     def __init__(self,Request_vector, id):
         self.Request_vector = Request_vector
         self.id = id
-    def retrieve (self, vectorDB: VectorDB, count, id, request):
-        return vectorDB.query(request, id, count)
+    def retrieve (self, vectorDB: VectorDB, count, id, request, access_filter):
+        return vectorDB.query(request, id, count, access_filter)
     
     
 

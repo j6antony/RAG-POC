@@ -135,13 +135,14 @@ def rewrite_query(history, request):
 
     return response.text.strip()
 
-async def answer_request(request, history, user_id, username, conversation_id):
+async def answer_request(request, history, user_id, username, conversation_id, role, department):
     request = await asyncio.to_thread(rewrite_query, history, request)
     vectorDB = await asyncio.to_thread(get_vectorDB)
     embedder = await asyncio.to_thread(get_embedder)
     request_vector = (await asyncio.to_thread(embedder.embed_request, request)).tolist()
     retrieval = Retrieval(request_vector, user_id)
-    context_list = await asyncio.to_thread(retrieval.retrieve, vectorDB, 5, user_id, request_vector)
+    access_filter = build_access_filter(user_id, role, department)
+    context_list = await asyncio.to_thread(retrieval.retrieve, vectorDB, 5, user_id, request_vector, access_filter)
     matches = context_list["matches"]
     state = get_conversation_state(user_id, conversation_id)
     route = await asyncio.to_thread(decide_route, request, matches, history, state)
@@ -158,6 +159,47 @@ async def answer_request(request, history, user_id, username, conversation_id):
     response = await asyncio.to_thread(feedtoai, username, "\n\n".join(contexts), request)
     state.update(matches[0]["score"] if matches else 0.0, route)
     return response
+def build_access_filter(role, department):
+
+    if role == "manager":
+        return {
+            "$or": [
+                {
+                    "visibility": {
+                        "$eq": "company"
+                    }
+                },
+                {
+                    "visibility": {
+                        "$eq": "department"
+                    }
+                }
+            ]
+        }
+
+    return {
+        "$or": [
+            {
+                "visibility": {
+                    "$eq": "company"
+                }
+            },
+            {
+                "$and": [
+                    {
+                        "visibility": {
+                            "$eq": "department"
+                        }
+                    },
+                    {
+                        "department": {
+                            "$eq": department
+                        }
+                    }
+                ]
+            }
+        ]
+    }
 
 def feedtoai(username, context, request):
     context_window = f"""

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from uuid import UUID
@@ -7,6 +7,7 @@ import os
 
 from rag import answer_request
 from services import get_embedder, get_vectorDB
+from autherization import Autherization
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -62,8 +63,29 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest, autherization: str = Header(...)):
     user = get_current_user(autherization)
 
+    authz = Autherization(supabase)
 
-    answer = await answer_request(request.message, request.history, user.id, user.user_metadata, str(request.conversation_id))
+    roles = authz.get_roles(user.id)
+    department = authz.get_department(user.id)
+
+    if not roles:
+        raise HTTPException(
+            status_code=403,
+            detail="User has no assigned role"
+        )
+
+    # For your current setup, assume one role per user
+    role = roles[0]
+
+    answer = await answer_request(
+        request.message,
+        request.history,
+        user.id,
+        user.user_metadata,
+        str(request.conversation_id),
+        role,
+        department
+    )
 
     return {
         "answer": answer
@@ -71,16 +93,26 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
 
 #response on backend when a file is uploaded
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...), autherization: str = Header(...)):
+async def upload_file(file: UploadFile = File(...), visibility = Form(...), autherization: str = Header(...)):
     user = get_current_user(autherization)
     contents = await file.read()
+    authz = Autherization(supabase)
+
+    roles = authz.get_roles(user.id)
+    department = authz.get_department(user.id)
+    if "manager" in roles:
+        visibility = "company"
+    else:
+        visibility = "department"
+
     #call the function to re-emebed the database
     embedder = get_embedder()
     vectorDB = get_vectorDB()
-    embedder.embed(file.filename, contents, user.id, vectorDB)
+    embedder.embed(file.filename, contents, user.id, vectorDB, visibility, department)
     return {
         "message": "file uploaded successfully",
-        "filename": file.filename
+        "filename": file.filename, 
+        "visibility": visibility
     }
 @app.post("/login")
 def login(input: Auth):

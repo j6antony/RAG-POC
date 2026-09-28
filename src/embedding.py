@@ -18,7 +18,7 @@ class Embed:
     def __init__(self):
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
-    def embed(self, filename, contents, id, vectorDB: VectorDB):
+    def embed(self, filename, contents, id, vectorDB: VectorDB, visibility, department=None):
         print("started embedding")
 
         chunks = self.chunk.get_chunks_file(contents, filename)
@@ -35,7 +35,10 @@ class Embed:
                 "values": embedding.tolist(),
                 "metadata": {
                     "filename": filename,
-                    "text": chunk.page_content
+                    "text": chunk.page_content,
+                    "owner_id": str(id),
+                    "visibility": visibility,
+                    "department": department or ""
                 }
             })
         # the reason this is required is sometimes the scraped website may give you no data then there is not point in doing and uspert and the uspert will fail which is why I 
@@ -46,7 +49,7 @@ class Embed:
 
         vectorDB.upsert(
             vectors=vectors,
-            namespace=id
+            namespace="company"
         )
         print("finished embedding")
     def embed_request(self, text):

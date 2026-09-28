@@ -24,16 +24,17 @@ class VectorDB:
         print("uploading to pinecone")
         self.index.upsert(
             vectors=vectors,
-            namespace=namespace
+            namespace="company"
         )
         print("uploaded to pinecone")
-    def query(self, vector, namespace: str, top_k):
+    def query(self, vector, namespace: str, top_k, filter):
         print("requesting pinecone")
         return self.index.query(
             vector=vector,
             top_k=top_k,
             include_metadata=True,
-            namespace=namespace
+            namespace=namespace, 
+            filter=filter
         )
 
 
