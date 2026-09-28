@@ -8,17 +8,23 @@ class Web:
         self.embedder = get_embedder()
         self.vectorDB = get_vectorDB()
     def search(self, request: str):
-        response = self.bb.search.web(
+        responses = self.bb.search.web(
             query=request,
             num_results=5
         )
-        return response
-    def search_embed(self, response, user_id: str):
-        
-
-        for result in response.results:
+        pages = []
+        for response in responses.results:
             page = self.bb.fetch_api.create(
-                url = result.url,
+                url=response.url,
                 format="markdown"
             )
-            self.embedder.embed(result.title, page.content.encode("utf-8"), user_id,self.vectorDB)
+            if page.content:
+                pages.append({
+                    "title": response.title,
+                    "url": response.url,
+                    "text": page.content
+                })
+        return pages
+    def search_embed(self, pages, user_id: str):
+        for page in pages:
+            self.embedder.embed(page["title"], page["text"].encode("utf-8"), user_id,self.vectorDB)

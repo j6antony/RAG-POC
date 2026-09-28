@@ -22,7 +22,7 @@ export default function App() {
     } catch { return null; }
   });
   const [messages, setMessages] = useState([]);
-  const [conversationId, setConversationId] = useState(0);
+  const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
   const request = useRef(0);
@@ -37,7 +37,7 @@ export default function App() {
     setError(null);
     if (!retry) setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'user', text: question }]);
     try {
-      const result = await askQuestion(question, messages);
+      const result = await askQuestion(question, retry ? messages.slice(0, -1) : messages, conversationId);
       if (currentRequest !== request.current) return;
       if (typeof result.answer !== 'string') throw new Error('Invalid response');
       setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', text: result.answer, sources: result.sources ?? [] }]);
@@ -58,7 +58,7 @@ export default function App() {
   }
 
   function resetChat() {
-    setConversationId((previous) => previous + 1);
+    setConversationId(crypto.randomUUID());
     request.current += 1;
     busy.current = false;
     setMessages([]);

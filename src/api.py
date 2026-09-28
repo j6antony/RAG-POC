@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from uuid import UUID
 from supabase import create_client, Client
 import os
 
@@ -56,12 +57,13 @@ class HistoryMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[HistoryMessage]
+    conversation_id: UUID
 @app.post("/chat")
-def chat(request: ChatRequest, autherization: str = Header(...)):
+async def chat(request: ChatRequest, autherization: str = Header(...)):
     user = get_current_user(autherization)
 
 
-    answer = answer_request(request.message,request.history, user.id, user.user_metadata)
+    answer = await answer_request(request.message, request.history, user.id, user.user_metadata, str(request.conversation_id))
 
     return {
         "answer": answer

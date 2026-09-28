@@ -4,14 +4,14 @@ const api_url = "http://127.0.0.1:8000";
 //const token = localStorage.getItem("access_token");
 
 
-export async function askQuestion(question,history) {
+export async function askQuestion(question, history, conversationId) {
   const response = await fetch(`${api_url}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Autherization': `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ message: question, history: history.slice(-6)}),
+    body: JSON.stringify({ message: question, history: history.slice(-6), conversation_id: conversationId}),
   });
 
   const data = await response.json().catch(() => null);
