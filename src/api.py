@@ -62,9 +62,19 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(request: ChatRequest, autherization: str = Header(...)):
     user = get_current_user(autherization)
+    user_access = get_user_access(supabase, user.id)
 
+    if user_access not in [1, 2, 3]:
+        raise HTTPException(status_code=403, detail="User has no valid access level")
 
-    answer = await answer_request(request.message, request.history, user.id, user.user_metadata, str(request.conversation_id))
+    answer = await answer_request(
+        request.message,
+        request.history,
+        user.id,
+        user.user_metadata,
+        str(request.conversation_id),
+        user_access
+    )
 
     return {
         "answer": answer
@@ -74,8 +84,10 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), autherization: str = Header(...), access_level: int = Form(...)):
     user = get_current_user(autherization)
-    user_access = get_user_access(user.id)
+    user_access = get_user_access(supabase, user.id)
     if user_access not in [1, 2, 3]:
+        raise HTTPException(status_code=400, detail="Invalid Access Level")
+    if access_level not in [1, 2, 3]:
         raise HTTPException(status_code=400, detail="Invalid Access Level")
     if access_level > user_access:
         raise HTTPException(
