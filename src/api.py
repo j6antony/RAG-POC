@@ -75,8 +75,13 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
 async def upload_file(file: UploadFile = File(...), autherization: str = Header(...), access_level: int = Form(...)):
     user = get_current_user(autherization)
     user_access = get_user_access(user.id)
-    if user_access not in [1, 2, 3] or access_level > user_access:
+    if user_access not in [1, 2, 3]:
         raise HTTPException(status_code=400, detail="Invalid Access Level")
+    if access_level > user_access:
+        raise HTTPException(
+            status_code=403,
+            detail="You cannot assign a higher access level"
+        )
     contents = await file.read()
     #call the function to re-emebed the database
     embedder = get_embedder()

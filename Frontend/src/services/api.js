@@ -28,11 +28,12 @@ export async function askQuestion(question, history, conversationId) {
 function getToken() {
   return localStorage.getItem("access_token");
 }
-export async function uploadFile(file) {
+export async function uploadFile(file, accessLevel = 1) {
   // the reason we need to use a formdata here is becuase unlike with text, numbers and stuff you cannot just stringify the json here with files
   const formData = new FormData();
 
-  formData.append("file", file)
+  formData.append("file", file);
+  formData.append("access_level", String(accessLevel));
 
   const response = await fetch(`${api_url}/upload`, {
     method: 'POST',
@@ -63,13 +64,13 @@ export async function submitPassword(email, password) {
   return data;
 }
 
-export async function signup(name, email, password) {
+export async function signup(name, email, password, role = 'user') {
   const response = await fetch(`${api_url}/signup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({name, email, password}),
+    body: JSON.stringify({name, email, password, role}),
   });
   const data = await response.json().catch(()=>null);
   if (!response.ok) {

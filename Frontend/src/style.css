@@ -6,7 +6,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
-button, textarea { font: inherit; }
+button, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: .45; }
 button:focus-visible, summary:focus-visible { outline: 2px solid #555; outline-offset: 3px; }
@@ -62,6 +62,8 @@ button:hover:not(:disabled) { background: #eee; }
 
 .document-panel { width: 260px; flex-shrink: 0; min-height: 0; border-right: 1px solid #e5e5e5; padding: 24px 16px; display: flex; flex-direction: column; gap: 20px; background: #fafafa; overflow-y: auto; }
 .document-panel h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.document-access { display: flex; flex-direction: column; gap: 9px; font-size: 12px; font-weight: 550; }
+.document-access select { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; background: #fff; color: #242424; font-size: 13px; }
 .upload-button { background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 10px 12px; font-size: 13px; flex-shrink: 0; }
 .document-list { min-height: 0; overflow-y: auto; }
 .document-list-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
@@ -84,7 +86,7 @@ button:hover:not(:disabled) { background: #eee; }
 
 /* Account entry and demo session */
 input { font: inherit; }
-a:focus-visible, input:focus-visible { outline: 2px solid #42664d; outline-offset: 3px; }
+a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #42664d; outline-offset: 3px; }
 .auth-shell { min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; background: #fff; }
 .auth-story { background: #eef2eb; padding: 40px 10%; display: flex; flex-direction: column; color: #263c2e; }
 .auth-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-size: 17px; font-weight: 650; text-decoration: none; width: fit-content; }
@@ -111,7 +113,7 @@ a:focus-visible, input:focus-visible { outline: 2px solid #42664d; outline-offse
 .auth-subtitle { color: #777; font-size: 13px; line-height: 1.7; margin: 0 0 32px; }
 .auth-form { display: flex; flex-direction: column; gap: 20px; }
 .auth-form label { display: flex; flex-direction: column; gap: 9px; font-size: 12px; font-weight: 550; }
-.auth-form input { width: 100%; min-width: 0; padding: 13px 14px; border: 1px solid #dcded9; border-radius: 6px; background: #fff; font-size: 14px; color: #242424; }
+.auth-form input, .auth-form select { width: 100%; min-width: 0; padding: 13px 14px; border: 1px solid #dcded9; border-radius: 6px; background: #fff; font-size: 14px; color: #242424; }
 .auth-form input::placeholder { color: #969994; font-weight: 400; }
 .password-field { position: relative; }
 .password-field input { padding-right: 62px; }
