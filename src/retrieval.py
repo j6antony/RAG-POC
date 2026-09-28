@@ -8,15 +8,12 @@ Issues:
 """
 
 from vectordb import VectorDB
-from authentification import get_user_access
 
 class Retrieval:
     def __init__(self,Request_vector, id):
         self.Request_vector = Request_vector
         self.id = id
-    def retrieve (self, vectorDB: VectorDB, count, id, request):
-        #this is very inefficient just for simplicity sake i have done it like this us ai to fix this it is very simple just tedious
-        user_access = get_user_access(id)
+    def retrieve (self, vectorDB: VectorDB, count, id, request, user_access):
         return vectorDB.query(request, "company", count, user_access, id)
     
     
