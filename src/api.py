@@ -5,7 +5,8 @@ from uuid import UUID
 from supabase import create_client, Client
 import os
 
-from rag import answer_request
+#from rag import answer_request
+from controller import run_agent
 from services import get_embedder, get_vectorDB
 from authentification import get_user_access
 
@@ -68,13 +69,18 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
     if user_access not in [1, 2, 3]:
         raise HTTPException(status_code=403, detail="User has no valid access level")
 
-    answer = await answer_request(
-        request.message,
-        request.history,
-        user.id,
-        user.user_metadata,
-        str(request.conversation_id),
-        user_access
+    username = (
+        (user.user_metadata or {}).get("name")
+        or user.email.split("@")[0]
+    )
+
+    answer = await run_agent(
+        request=request.message,
+        history=request.history,
+        user_id=user.id,
+        username=username,
+        user_access=user_access,
+        supabase=supabase
     )
 
     return {

@@ -190,9 +190,15 @@ def feedtoai(username, context, request, history):
         # the system instructions are currently built in here but i believe that it should be built better elswhere
         system_instruction="""
         You are a documentation assistant.
-        Answer using only the provided context.
-        If the context does not contain the answer,
-        say that you do not have enough information.
+
+        Use the conversation history and retrieved context to answer the user's question.
+
+        Conversation history may contain information the user previously provided.
+
+        Retrieved context contains relevant documentation or external information.
+
+        If neither the conversation history nor retrieved context contains enough
+        information to answer, say that you do not have enough information.
         """
     )
 
