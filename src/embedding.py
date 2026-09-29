@@ -11,6 +11,7 @@ Issues:
 from sentence_transformers import SentenceTransformer
 from chunk import Chunk
 from vectordb import VectorDB
+from uuid import uuid4
 
 
 class Embed:
@@ -28,12 +29,14 @@ class Embed:
         embeddings = self.model.encode(texts)
 
         vectors = []
+        document_id = str(uuid4())
 
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             vectors.append({
-                "id": f"{filename}-{i}",
+                "id": f"{document_id}-{i}",
                 "values": embedding.tolist(),
                 "metadata": {
+                    "document_id": document_id,
                     "filename": filename,
                     "text": chunk.page_content,
                     "owner_id": str(id),
