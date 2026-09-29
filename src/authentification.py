@@ -32,7 +32,10 @@ def get_user_permissions(supabase, role):
 def get_user_access(supabase, user_id):
     ROLE_ACCESS_LEVELS = {"user": 1, "manager": 2, "admin": 3}
     role = get_user_role(supabase, user_id)
-    return ROLE_ACCESS_LEVELS.get(role)
+    access_level = ROLE_ACCESS_LEVELS.get(role)
+    print("ACCESS DEBUG - role:", role)
+    print("ACCESS DEBUG - resolved access level:", access_level)
+    return access_level
 
 # this function will be useful for further implementation but as of now it is unused
 def has_permission(supabase, user_id, action):
