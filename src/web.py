@@ -2,6 +2,7 @@ from services import get_embedder, get_vectorDB
 from browserbase import Browserbase
 import os
 
+
 class Web:
     def __init__(self):
         self.bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
@@ -14,16 +15,20 @@ class Web:
         )
         pages = []
         for response in responses.results:
-            page = self.bb.fetch_api.create(
-                url=response.url,
-                format="markdown"
-            )
-            if page.content:
-                pages.append({
-                    "title": response.title,
-                    "url": response.url,
-                    "text": page.content
-                })
+            try:    
+                page = self.bb.fetch_api.create(
+                    url=response.url,
+                    format="markdown"
+                )
+                if page.content:
+                    pages.append({
+                        "title": response.title,
+                        "url": response.url,
+                        "text": page.content
+                    })
+            except Exception as error:
+                print(f"Failed to fetch {response.url}: {error}")
+                continue
         return pages
     def search_embed(self, pages, user_id: str, user_access: int):
         for page in pages:

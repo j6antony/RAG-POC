@@ -52,6 +52,7 @@ class info(BaseModel):
     name: str
     email: str
     password: str
+    role: str
 class HistoryMessage(BaseModel):
     role: str
     text: str
@@ -143,6 +144,10 @@ def signup(input: info):
             }
         }
     })
+    supabase.table("user_roles").insert({
+        "user_id": response.user.id,
+        "role": input.role
+    }).execute()
     if response.session is None:
         return {
             "requires_confirmation": True,

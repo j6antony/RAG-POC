@@ -162,17 +162,23 @@ async def answer_request(request, history, user_id, username, conversation_id, u
         contexts.extend(page["text"] for page in pages)
         asyncio.create_task(asyncio.to_thread(web.search_embed, pages, user_id, user_access))
 
-    response = await asyncio.to_thread(feedtoai, username, "\n\n".join(contexts), request)
+    response = await asyncio.to_thread(feedtoai, username, "\n\n".join(contexts), request, history)
     state.update(matches[0]["score"] if matches else 0.0, route)
     return response
-
-def feedtoai(username, context, request):
+def feedtoai(username, context, request, history):
+    conversation = "\n".join(
+        f"{message.role}: {message.text}"
+        for message in history[-6:]
+    )
     context_window = f"""
     you are speaking with a user named {username} who is a student of University of Waterloo
     Use the following context to answer the question.
 
     Context:
     {context}
+
+    conversation history:
+    {conversation}
 
     Question:
     {request}
