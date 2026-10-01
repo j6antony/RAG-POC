@@ -259,3 +259,41 @@ Generate a grounded response
 ```
 
 Once this basic pipeline is working and understood, more advanced retrieval and reasoning techniques can be introduced.
+
+## PDF image mapping
+
+PDF uploads now extract text page by page and extract embedded raster images.
+Each Pinecone chunk includes `document_id`, `page` (one-based), and `image_ids`.
+Image bytes are stored as PNGs in the private `knowledge-images` Storage bucket;
+`knowledge_images` records map each image to its document and page.
+
+### Setup
+
+1. Run `supabase/migrations/20260930_knowledge_images.sql` in the project's
+   Supabase SQL Editor. This creates the image registry and private bucket.
+2. Install the updated requirements or rebuild the Docker services:
+   `docker compose up -d --build backend frontend`.
+3. Upload a PDF containing selectable text and embedded images, then ask a
+   question about text on an illustrated page. Chat shows images from retrieved
+   pages below the answer. Existing uploads need to be uploaded again to add mappings.
+
+Images are fetched through `GET /knowledge/images/{image_id}` with the same
+`Autherization` header currently used by the other API endpoints. The backend
+checks the parent document's level and uploader before downloading from Storage.
+No public image URLs or model-generated image IDs are trusted by the frontend.
+The backend Supabase key must be a server-side secret/service key; never put it
+in frontend configuration.
+
+This is page-based association, not image understanding: all extracted images
+on a retrieved page may appear, even if the answer concerns a different paragraph.
+Scanned PDFs without extractable text require OCR and are rejected. Vector-only
+PDF diagrams are not extracted. Images are not captioned or embedded separately.
+Text/Markdown uploads remain supported. The upload limit is 20 MB.
+
+Offline regression checks (no cloud writes or model downloads):
+
+```sh
+.venv/bin/python -m unittest discover -s tests -p test_document_images.py
+.venv/bin/python -m unittest discover -s tests -p test_roles.py
+npm --prefix Frontend run build
+```

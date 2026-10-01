@@ -135,3 +135,15 @@ a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid 
   .auth-form-panel { padding: 40px 24px; }
   .conversation-header { flex-wrap: wrap; }
 }
+
+.document-item strong { display: block; font-size: 12px; font-weight: 550; }
+.document-item small, .document-item time { display: block; margin-top: 4px; color: #666; font-size: 11px; }
+.document-item { border-bottom: 1px solid #e5e5e5; }
+.document-list { flex-shrink: 0; }
+
+.knowledge-images { margin-top: 20px; }
+.knowledge-images h3 { font-size: 12px; color: #666; font-weight: 500; }
+.knowledge-image { margin: 12px 0; padding: 12px; border: 1px solid #ddd; border-radius: 8px; max-width: 520px; }
+.knowledge-image img { display: block; max-width: 100%; max-height: 360px; object-fit: contain; margin: auto; }
+.knowledge-image figcaption { margin-top: 10px; font-size: 11px; color: #666; overflow-wrap: anywhere; }
+.knowledge-image p { font-size: 12px; }

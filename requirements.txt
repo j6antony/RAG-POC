@@ -147,3 +147,6 @@ websockets==15.0.1
 xxhash==4.0.1
 yarl==1.25.1
 zstandard==0.25.0
+
+pypdf[image]==6.19.0
+Pillow==12.3.0

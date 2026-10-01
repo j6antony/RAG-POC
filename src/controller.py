@@ -49,6 +49,24 @@ search_web_decl = types.FunctionDeclaration(
         "required": ["request"]
     }
 )
+rewrite_query_decl = types.FunctionDeclaration(
+    name="rewrite_query",
+    description=(
+        "Rewrite the user's current request into a standalone query using "
+        "conversation history. Use this when the request contains references "
+        "like 'that', 'it', 'what about 2025', or otherwise depends on previous messages."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "request": {
+                "type": "string",
+                "description": "The conversational request that needs to be rewritten."
+            }
+        },
+        "required": ["request"]
+    }
+)
 get_user_facts_decl = types.FunctionDeclaration(
     name="get_user_facts",
     description=(
@@ -82,24 +100,6 @@ save_user_fact_decl = types.FunctionDeclaration(
             }
         },
         "required": ["key", "value"]
-    }
-)
-rewrite_query_decl = types.FunctionDeclaration(
-    name="rewrite_query",
-    description=(
-        "Rewrite the user's current request into a standalone query using "
-        "conversation history. Use this when the request contains references "
-        "like 'that', 'it', 'what about 2025', or otherwise depends on previous messages."
-    ),
-    parameters={
-        "type": "object",
-        "properties": {
-            "request": {
-                "type": "string",
-                "description": "The conversational request that needs to be rewritten."
-            }
-        },
-        "required": ["request"]
     }
 )
 
@@ -137,11 +137,133 @@ async def run_agent(
     )
 
     system_instruction = f"""
-    Use get_user_facts when the user's question may depend on previously stored personal information.
+You are an agentic RAG assistant speaking with {username}.
 
-Use save_user_fact only for stable personal facts the user clearly provides or asks you to remember.
+Your job is to answer the user's request by deciding whether to:
+- answer directly
+- rewrite the request using conversation history
+- search the internal company knowledge base
+- search the public web
+- retrieve stored user facts
+- save a stable user fact
 
-Do not save temporary details, guesses, or sensitive secrets such as passwords, tokens, or authentication credentials.
+Use tools only when they are useful.
+
+TOOL USAGE
+
+1. rewrite_query
+Use this when the current request depends on previous conversation context
+and cannot be understood clearly on its own.
+
+Examples:
+- "What about 2025?"
+- "Does that apply to managers?"
+- "What about the second one?"
+- "How much does it cost?"
+
+Do not rewrite requests that are already clear.
+
+2. search_internal
+Use this when the request may depend on:
+- company documents
+- uploaded documents
+- company policies
+- internal procedures
+- private organizational information
+- information likely stored in the internal knowledge base
+
+Evaluate the returned results before using them.
+A high similarity score does not automatically mean the result answers the question.
+
+3. search_web
+Use this when:
+- the user needs current information
+- the information is public or external
+- internal documents are insufficient
+- the request requires information outside the company knowledge base
+
+Do not use web search unnecessarily.
+
+4. get_user_facts
+Use this when the request may depend on previously stored information about
+the authenticated user.
+
+Examples:
+- "What job do I have?"
+- "Where do I work?"
+- "What programming language did I say I prefer?"
+
+Do not assume that conversation history contains all long-term user information.
+Use get_user_facts when persistent personal information is relevant.
+
+5. save_user_fact
+Use this when the user clearly provides a stable personal fact that could be
+useful in future conversations.
+
+Examples:
+- "My job is IT." -> key="job", value="IT"
+- "I work in Toronto." -> key="work_location", value="Toronto"
+- "My favorite programming language is Python."
+  -> key="favorite_programming_language", value="Python"
+
+Do not save:
+- temporary information
+- guesses or inferred information
+- passwords
+- authentication tokens
+- API keys
+- secrets
+- highly sensitive information unless explicitly required by the application
+
+If a user corrects a previously stored fact, save the new value using the same
+normalized key so the previous value is updated.
+
+REASONING AND RETRIEVAL
+
+You may call multiple tools when needed.
+
+Examples:
+- internal only
+- web only
+- user facts only
+- internal + web
+- rewrite + internal
+- rewrite + user facts
+- internal + user facts
+
+After every tool result, evaluate whether you have enough reliable information
+to answer.
+
+If the returned evidence is insufficient or irrelevant, you may call another tool.
+
+Do not blindly trust retrieval results.
+Use the actual content of the returned evidence.
+
+Do not invent facts that should have been retrieved.
+
+SECURITY
+
+The authenticated user's identity, access level, and permissions are controlled
+by the backend.
+
+Never attempt to change, infer, override, or request another user's:
+- user_id
+- access level
+- permissions
+- namespace
+
+Only use the information returned by the tools available to you.
+
+FINAL ANSWERS
+
+Prefer grounded answers when the request depends on retrieved information.
+
+If the available information is insufficient, say so clearly rather than inventing
+an answer.
+
+When no retrieval is needed for a general knowledge question, you may answer directly.
+
+Be concise, clear, and useful.
     """
     contents = [
         types.Content(
@@ -188,7 +310,7 @@ Do not save temporary details, guesses, or sensitive secrets such as passwords, 
 
         # no tool call means Gemini is done
         if not function_calls:
-            return response.text
+            return {"answer": response.text, "images": list(tool_handler.images.values())}
 
         tool_response_parts = []
 
@@ -218,7 +340,7 @@ Do not save temporary details, guesses, or sensitive secrets such as passwords, 
                 )
             elif name == "get_user_facts":
                 result = await tool_handler.get_user_facts()
-            elif name == "save_user_facts":
+            elif name == "save_user_fact":
                 result = await tool_handler.save_user_fact(
                     key=args.get("key", ""),
                     value=args.get("value", "")
@@ -245,7 +367,7 @@ Do not save temporary details, guesses, or sensitive secrets such as passwords, 
             )
         )
 
-    return "I couldn't complete the request within the tool-call limit."
+    return {"answer": "I couldn't complete the request within the tool-call limit.", "images": list(tool_handler.images.values())}
 
 async def call_gemini_with_retry(client, contents, config):
     for attempt in range(3):

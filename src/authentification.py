@@ -1,17 +1,23 @@
+from fastapi import HTTPException
+
+ROLE_ACCESS_LEVELS = {"user": 1, "manager": 2, "admin": 3}
+
+
 def get_user_role(supabase, user_id):
-    role = (
+    response = (
         supabase.table("user_roles")
         .select("role")
-        .eq("user_id", user_id)
+        .eq("user_id", str(user_id))
         .execute()
     )
-    """
-    This will return [{role: "role"}]
-    """
-    if role.data:
-        return role.data[0]["role"]
-    # if no role assign an automatic default of user class
-    return "user"
+    roles = {row["role"] for row in (response.data or [])}
+    if not roles or not roles.issubset(ROLE_ACCESS_LEVELS):
+        raise HTTPException(
+            status_code=403,
+            detail="Account role is missing or invalid. Check the user_roles assignment.",
+        )
+    # A user can have multiple role assignments; use the highest assigned level.
+    return max(roles, key=ROLE_ACCESS_LEVELS.get)
 
 def get_user_permissions(supabase, role):
     response = (
@@ -30,12 +36,7 @@ def get_user_permissions(supabase, role):
     return permissions
 
 def get_user_access(supabase, user_id):
-    ROLE_ACCESS_LEVELS = {"user": 1, "manager": 2, "admin": 3}
-    role = get_user_role(supabase, user_id)
-    access_level = ROLE_ACCESS_LEVELS.get(role)
-    print("ACCESS DEBUG - role:", role)
-    print("ACCESS DEBUG - resolved access level:", access_level)
-    return access_level
+    return ROLE_ACCESS_LEVELS[get_user_role(supabase, user_id)]
 
 # this function will be useful for further implementation but as of now it is unused
 def has_permission(supabase, user_id, action):

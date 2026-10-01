@@ -19,28 +19,31 @@ class Embed:
     def __init__(self):
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
-    def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int):
+    def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int, document_id, chunks=None):
         print("started embedding")
 
-        chunks = self.chunk.get_chunks_file(contents, filename)
+        if chunks is None:
+            chunks = self.chunk.get_chunks_file(contents, filename)
+        if not chunks:
+            raise ValueError("The document contains no searchable text.")
 
         texts = [chunk.page_content for chunk in chunks]
 
         embeddings = self.model.encode(texts)
 
         vectors = []
-        document_id = str(uuid4())
 
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             vectors.append({
                 "id": f"{document_id}-{i}",
                 "values": embedding.tolist(),
                 "metadata": {
-                    "document_id": document_id,
+                    "document_id": str(document_id),
                     "filename": filename,
                     "text": chunk.page_content,
                     "owner_id": str(id),
-                    "access_level": access_level
+                    "access_level": access_level,
+                    **{key: chunk.metadata[key] for key in ("page", "image_ids") if key in chunk.metadata}
                 }
             })
         # the reason this is required is sometimes the scraped website may give you no data then there is not point in doing and uspert and the uspert will fail which is why I 

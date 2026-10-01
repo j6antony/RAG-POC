@@ -1,3 +1,4 @@
+from document_images import image_references
 from web import Web
 from vectordb import VectorDB
 from services import get_embedder, get_vectorDB
@@ -14,6 +15,7 @@ class Tools:
         self.access = user_access
         self.user_id = user_id
         self.supabase = supabase
+        self.images = {}
     async def search_internal(self, request: str):
         request_vector = await asyncio.to_thread(
             self.embedder.embed_request,
@@ -31,7 +33,7 @@ class Tools:
             self.user_id
         )
 
-        return {
+        result = {
             "matches": [
                 {
                     "id": match.id,
@@ -41,6 +43,10 @@ class Tools:
                 for match in response.matches
             ]
         }
+        images = await asyncio.to_thread(image_references, self.supabase, result['matches'], self.user_id, self.access)
+        self.images.update({image['id']: image for image in images})
+        return result
+
     async def search_web(self, request: str):
         #just testing the build so for now web embedding will not be happening
        return await asyncio.to_thread(
@@ -97,7 +103,7 @@ class Tools:
             .table("user_facts")
             .upsert(
                 {
-                    "user_id": self.user_id,
+                    "user_id": str(self.user_id),
                     "key": key,
                     "value": value
                 },

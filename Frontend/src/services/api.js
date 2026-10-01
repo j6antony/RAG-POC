@@ -78,3 +78,42 @@ export async function signup(name, email, password, role = 'user') {
   };
   return data;
 }
+
+export async function getKnowledge() {
+
+  const response = await fetch(
+    `${api_url}/knowledge`,
+    {
+      method: 'GET',
+
+      headers: {
+        'Autherization': `Bearer ${getToken()}`,
+      }
+    }
+  );
+
+  const data = await response
+    .json()
+    .catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data?.detail === 'string'
+        ? data.detail
+        : 'Failed to load knowledge base.'
+    );
+  }
+
+  if (!Array.isArray(data?.documents) || ![1, 2, 3].includes(data.access_level)) {
+    throw new Error('Invalid knowledge base response.');
+  }
+  return data;
+}
+
+export async function getKnowledgeImage(imageId, signal) {
+  const response = await fetch(`${api_url}/knowledge/images/${encodeURIComponent(imageId)}`, {
+    headers: { Autherization: `Bearer ${getToken()}` }, signal,
+  });
+  if (!response.ok) throw new Error('Image unavailable or access has changed.');
+  return response.blob();
+}

@@ -40,7 +40,7 @@ export default function App() {
       const result = await askQuestion(question, retry ? messages.slice(0, -1) : messages, conversationId);
       if (currentRequest !== request.current) return;
       if (typeof result.answer !== 'string') throw new Error('Invalid response');
-      setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', text: result.answer, sources: result.sources ?? [] }]);
+      setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', text: result.answer, sources: result.sources ?? [], images: result.images ?? [] }]);
     } catch (error) {
       console.error(error);
       if (currentRequest === request.current) {
