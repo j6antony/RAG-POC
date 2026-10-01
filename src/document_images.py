@@ -6,8 +6,14 @@ from pypdf import PdfReader
 from PIL import Image
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+import pytesseract
+
 BUCKET = 'knowledge-images'
 
+def run_ocr(image_bytes):
+    with Image.open(BytesIO(image_bytes)) as image:
+        text = pytesseract.image_to_string(image)
+    return text
 
 def extract_pdf(contents, filename):
     chunks, images = [], []
@@ -24,19 +30,32 @@ def extract_pdf(contents, filename):
                 output = BytesIO()
                 with Image.open(BytesIO(embedded.data)) as image:
                     image.convert('RGBA').save(output, format='PNG')
-                images.append({'id': image_id, 'page_number': page_number, 'contents': output.getvalue()})
+                image_bytes = output.getvalue()
+                ocr_text = run_ocr(image_bytes)
+                images.append({'id': image_id, 'page_number': page_number, 'contents': image_bytes})
                 image_ids.append(image_id)
+                if ocr_text.strip():
+                    chunks.extend(
+                        splitter.create_documents([ocr_text],
+                                                  metadatas=[{
+                                                    'source': filename,
+                                                    'page': page_number,
+                                                    'image_ids': [image_id],
+                                                    'source_type': 'image_ocr',
+                                                    'image_id': image_id,
+                                                  }])
+                    )
             text = page.extract_text() or ''
             if text.strip():
                 chunks.extend(splitter.create_documents([text], metadatas=[{
-                    'source': filename, 'page': page_number, 'image_ids': image_ids,
+                    'source': filename, 'page': page_number, 'image_ids': image_ids, 'source_type': 'pdf_text',
                 }]))
     except ValueError:
         raise
     except Exception as error:
         raise ValueError('Could not read this PDF. Upload a valid, unencrypted PDF.') from error
     if not chunks:
-        raise ValueError('This PDF has no extractable text. Scanned PDFs need OCR, which is not supported yet.')
+        raise ValueError('No readable text could be extracted from this PDF.')
     return chunks, images
 
 
