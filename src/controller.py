@@ -3,6 +3,7 @@ from google.genai import types, errors
 
 from tools import Tools
 from web import Web
+from analysis_agent import Analysis_agent
 
 import asyncio
 import supabase
@@ -11,6 +12,29 @@ import supabase
 # to prevent the ai from using up too many resources and taking a long time
 MAX_TOOL_CALLS = 5
 MODEL = "gemini-3.5-flash-lite"
+analysis_agent = Analysis_agent()
+AGENTS = {
+    #"knowledge": {"description": "Searches internal company documents and RAG knowledge.", "agent": knowledge_agent},
+   # "web": {"description": "Searches external web sources.", "agent": web_agent},
+    "analysis": {"description": (
+            "Analyzes provided information, compares results, identifies "
+            "patterns or contradictions, and produces conclusions."
+        ),
+        "agent": analysis_agent,
+        }
+    }
+
+def get_available_agents():
+    if not AGENTS:
+        return "No additional agents are currently available."
+    lines = ["Available agents:"]
+
+    for name, config in AGENTS.items():
+        lines.append(
+            f"-{name}: {config["dicription"]}"
+        )
+    return "\n".join(lines)
+
 
 # teaching gemini how to call each of the given functions
 search_internal_decl = types.FunctionDeclaration(
@@ -103,6 +127,26 @@ save_user_fact_decl = types.FunctionDeclaration(
     }
 )
 
+delegate_to_agent = types.FunctionDeclaration(
+    name="delegate_to_agent",
+    description="Delegate a multi-step task to another available agent.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "agent_name": {
+                "type": "string",
+                "enum": list(AGENTS.keys()),
+                "description": "The registered agent to delegate the task to."
+            },
+            "request": {
+                "type": "string",
+                "description": "A clear self-contained task for the agent."
+            }
+        },
+        "required": ["agent_name", "request"]
+    }
+)
+
 tools = types.Tool(
     function_declarations=[
         search_internal_decl,
@@ -135,135 +179,51 @@ async def run_agent(
         f"{message.role}: {message.text}"
         for message in history[-6:]
     )
+    agent_context = get_available_agents()
 
     system_instruction = f"""
-You are an agentic RAG assistant speaking with {username}.
+        You are the coordinator for an enterprise Retrieval-Augmented Generation system.
 
-Your job is to answer the user's request by deciding whether to:
-- answer directly
-- rewrite the request using conversation history
-- search the internal company knowledge base
-- search the public web
-- retrieve stored user facts
-- save a stable user fact
+        Your job is to understand the user's request and decide whether to answer
+        directly, use a tool, or delegate a task to another agent.
 
-Use tools only when they are useful.
+        TOOLS VS AGENTS
 
-TOOL USAGE
+        Tools perform specific actions.
 
-1. rewrite_query
-Use this when the current request depends on previous conversation context
-and cannot be understood clearly on its own.
+        Agents are independent workers capable of performing larger multi-step tasks.
 
-Examples:
-- "What about 2025?"
-- "Does that apply to managers?"
-- "What about the second one?"
-- "How much does it cost?"
+        Do not delegate something to an agent when a normal tool can perform the
+        operation directly.
 
-Do not rewrite requests that are already clear.
+        AGENT SELECTION
 
-2. search_internal
-Use this when the request may depend on:
-- company documents
-- uploaded documents
-- company policies
-- internal procedures
-- private organizational information
-- information likely stored in the internal knowledge base
+        You may ONLY use agents listed under Available Agents.
 
-Evaluate the returned results before using them.
-A high similarity score does not automatically mean the result answers the question.
+        Never invent an agent name, type, or capability.
 
-3. search_web
-Use this when:
-- the user needs current information
-- the information is public or external
-- internal documents are insufficient
-- the request requires information outside the company knowledge base
+        {agent_context}
 
-Do not use web search unnecessarily.
+        When delegating, select the agent whose description best matches the task.
 
-4. get_user_facts
-Use this when the request may depend on previously stored information about
-the authenticated user.
+        If no available agent is appropriate, do not delegate.
 
-Examples:
-- "What job do I have?"
-- "Where do I work?"
-- "What programming language did I say I prefer?"
+        DELEGATION
 
-Do not assume that conversation history contains all long-term user information.
-Use get_user_facts when persistent personal information is relevant.
+        When calling delegate_to_agent:
+        - provide the exact registered agent name
+        - provide a clear, self-contained task
+        - include only relevant context
+        - do not delegate trivial actions
+        - do not create circular delegation
 
-5. save_user_fact
-Use this when the user clearly provides a stable personal fact that could be
-useful in future conversations.
+        ACCESS CONTROL
 
-Examples:
-- "My job is IT." -> key="job", value="IT"
-- "I work in Toronto." -> key="work_location", value="Toronto"
-- "My favorite programming language is Python."
-  -> key="favorite_programming_language", value="Python"
+        All operations must respect the initiating user's user_id and access level.
 
-Do not save:
-- temporary information
-- guesses or inferred information
-- passwords
-- authentication tokens
-- API keys
-- secrets
-- highly sensitive information unless explicitly required by the application
+        Delegating to another agent must never increase the user's permissions.
 
-If a user corrects a previously stored fact, save the new value using the same
-normalized key so the previous value is updated.
-
-REASONING AND RETRIEVAL
-
-You may call multiple tools when needed.
-
-Examples:
-- internal only
-- web only
-- user facts only
-- internal + web
-- rewrite + internal
-- rewrite + user facts
-- internal + user facts
-
-After every tool result, evaluate whether you have enough reliable information
-to answer.
-
-If the returned evidence is insufficient or irrelevant, you may call another tool.
-
-Do not blindly trust retrieval results.
-Use the actual content of the returned evidence.
-
-Do not invent facts that should have been retrieved.
-
-SECURITY
-
-The authenticated user's identity, access level, and permissions are controlled
-by the backend.
-
-Never attempt to change, infer, override, or request another user's:
-- user_id
-- access level
-- permissions
-- namespace
-
-Only use the information returned by the tools available to you.
-
-FINAL ANSWERS
-
-Prefer grounded answers when the request depends on retrieved information.
-
-If the available information is insufficient, say so clearly rather than inventing
-an answer.
-
-When no retrieval is needed for a general knowledge question, you may answer directly.
-
-Be concise, clear, and useful.
+        You are responsible for combining tool and agent results into the final answer.
     """
     contents = [
         types.Content(
@@ -396,3 +356,15 @@ async def call_gemini_with_retry(client, contents, config):
             await asyncio.sleep(wait_seconds)
 
     raise RuntimeError("Gemini did not return a response.")
+
+async def degelegate_to_agent(agent_name: str, request: str, user_id: str, user_access: int):
+    if agent_name not in AGENTS:
+        raise ValueError(f"Unknown agent provided: {agent_name}")
+    agent_config = AGENTS[agent_name]
+
+    agent = agent_config["agent"]
+    return await agent.run(
+        request,
+        user_id,
+        user_access
+    )

@@ -2,6 +2,11 @@ FROM python:3.14-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 
 #techinically it will work without --no-cache-dir but it is better to cleare the existing stuff especially since we are working with large dependencies
