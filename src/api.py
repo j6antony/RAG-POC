@@ -5,6 +5,8 @@ from uuid import UUID
 from supabase import create_client, Client
 import os
 import logging
+import json
+import asyncio
 from pathlib import Path
 from typing import Literal
 from fastapi.responses import Response
@@ -14,6 +16,7 @@ from document_images import extract_pdf, store_images, can_view_document, BUCKET
 from controller import run_agent
 from services import get_embedder, get_vectorDB
 from authentification import get_user_access
+from fastapi.responses import StreamingResponse
 
 VISIBILITY_LEVELS = {"user": 1, "manager": 2, "admin": 3}
 
@@ -84,17 +87,83 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
         or user.email.split("@")[0]
     )
 
-    answer = await run_agent(
-        request=request.message,
-        history=request.history,
-        user_id=user.id,
-        username=username,
-        conversation_id=request.conversation_id,
-        user_access=user_access,
-        supabase=supabase
-    )
+    progress_queue = asyncio.Queue()
 
-    return answer if isinstance(answer, dict) else {"answer": answer, "images": []}
+    async def progress(event):
+        await progress_queue.put(event)
+    async def run():
+        return await run_agent(
+                request=request.message,
+                history=request.history,
+                user_id=user.id,
+                username=username,
+                conversation_id=request.conversation_id,
+                user_access=user_access,
+                supabase=supabase, 
+                progress=progress,
+        )
+    def format_sse(event_type, data):
+        payload = json.dumps(data)
+
+        return (
+            f"event: {event_type}\n"
+            f"data: {payload}\n\n"
+        )
+    async def event_stream():
+        task = asyncio.create_task(run())
+
+        try:
+            while not task.done():
+
+                try:
+                    event = await asyncio.wait_for(
+                        progress_queue.get(),
+                        timeout=0.25,
+                    )
+
+                    yield format_sse(
+                        "progress",
+                        event
+                    )
+
+                except asyncio.TimeoutError:
+                    continue
+
+            result = await task
+
+            # Drain anything emitted immediately
+            # before the task completed.
+            while not progress_queue.empty():
+                event = progress_queue.get_nowait()
+
+                yield format_sse(
+                    "progress",
+                    event
+                )
+
+            yield format_sse(
+                "complete",
+                result
+            )
+
+        except Exception as exc:
+
+            yield format_sse(
+                "error",
+                {
+                    "message": str(exc)
+                }
+            )
+        
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
 
 #response on backend when a file is uploaded
 @app.post("/upload")

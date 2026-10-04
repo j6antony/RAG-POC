@@ -14,6 +14,7 @@ MODEL = "gemini-3.5-flash-lite"
 
 analysis_agent = AnalysisAgent()
 
+
 AGENTS = {
     "analysis": {
         "description": (
@@ -326,7 +327,19 @@ async def run_agent(
     supabase,
     allow_chat_delegation=True,
     persist_turn=True,
+    progress=None
 ):
+
+    async def send_progress(stage, message):
+        if progress:
+            await progress({
+                "stage": stage,
+                "message": message,
+            })
+
+    await send_progress(
+    "starting",
+    "Understanding your request...")  
     client = genai.Client()
 
     if persist_turn:
@@ -457,6 +470,7 @@ Current request:
         function_calls = response.function_calls
 
         if not function_calls:
+            await send_progress("finalizing","Preparing the final response" )
             answer = response.text or ""
             print(f"[COORDINATOR] Final response produced on round {tool_round}")
 
@@ -485,12 +499,16 @@ Current request:
 
             try:
                 if name == "search_internal":
+
+                    await send_progress("search_internal", "searching internal knowledgebase . . .")
                     result = await tool_handler.search_internal(tool_request)
 
                 elif name == "search_web":
+                    await send_progress("search_web", "searching the web . . .")
                     result = await tool_handler.search_web(tool_request)
 
                 elif name == "rewrite_query":
+                    await send_progress("rewrite_query", "rewriting the query . . .")
                     result = await tool_handler.rewrite_query(tool_request, history)
 
                 elif name == "get_user_facts":
@@ -503,6 +521,7 @@ Current request:
                     )
 
                 elif name == "delegate_to_agent":
+                    await send_progress("delegate_to_agent", "using an agent . . .")
                     result = await delegate_to_agent(
                         agent_name=args.get("agent_name", ""),
                         request=tool_request,
@@ -512,6 +531,7 @@ Current request:
                     )
 
                 elif name == "delegate_to_chat" and allow_chat_delegation:
+                    await send_progress("delegate_to_chat", "checking other chats for relevent context . . .")
                     target_id = args.get("target_conversation_id", "")
                     await validate_target_chat(
                         target_conversation_id=target_id,
