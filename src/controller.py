@@ -178,17 +178,26 @@ async def delegate_to_agent(
     user_access: int,
     context: str = "",
 ):
+    print(
+        f"[A2A] Delegating to agent='{agent_name}' "
+        f"access={user_access} context_chars={len(context)}"
+    )
+
     if agent_name not in AGENTS:
+        print(f"[A2A] Unknown agent requested: {agent_name}")
         raise ValueError(f"Unknown agent provided: {agent_name}")
 
     agent = AGENTS[agent_name]["agent"]
 
-    return await agent.run(
+    result = await agent.run(
         request=request,
         user_id=user_id,
         user_access=user_access,
         context=context,
     )
+
+    print(f"[A2A] Agent '{agent_name}' completed successfully")
+    return result
 
 
 async def run_agent(
@@ -288,7 +297,12 @@ async def run_agent(
         ),
     )
 
-    for _ in range(MAX_TOOL_CALLS):
+    print(
+        f"[COORDINATOR] Starting request with access={user_access}; "
+        f"available_agents={list(AGENTS.keys())}"
+    )
+
+    for tool_round in range(1, MAX_TOOL_CALLS + 1):
         response = await call_gemini_with_retry(
             client,
             contents=contents,
@@ -302,6 +316,7 @@ async def run_agent(
         function_calls = response.function_calls
 
         if not function_calls:
+            print(f"[COORDINATOR] Final response produced on round {tool_round}")
             return {
                 "answer": response.text,
                 "images": list(tool_handler.images.values()),
@@ -313,6 +328,8 @@ async def run_agent(
             name = function_call.name
             args = function_call.args or {}
             tool_request = args.get("request", "")
+
+            print(f"[COORDINATOR] Tool selected: {name} (round {tool_round})")
 
             try:
                 if name == "search_internal":
@@ -337,6 +354,11 @@ async def run_agent(
                     )
 
                 elif name == "delegate_to_agent":
+                    print(
+                        f"[COORDINATOR] Delegation requested: "
+                        f"agent={args.get('agent_name', '')} "
+                        f"context_chars={len(args.get('context', ''))}"
+                    )
                     result = await delegate_to_agent(
                         agent_name=args.get("agent_name", ""),
                         request=tool_request,
@@ -351,6 +373,7 @@ async def run_agent(
                     }
 
             except Exception as exc:
+                print(f"[COORDINATOR] {name} failed: {exc}")
                 result = {
                     "error": f"{name} failed: {exc}"
                 }
@@ -371,6 +394,7 @@ async def run_agent(
             )
         )
 
+    print("[COORDINATOR] Tool-call limit reached")
     return {
         "answer": "I couldn't complete the request within the tool-call limit.",
         "images": list(tool_handler.images.values()),
