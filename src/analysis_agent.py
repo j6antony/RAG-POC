@@ -1,17 +1,27 @@
+import asyncio
+
 from google import genai
 from google.genai import types
 
-class Analysis_agent:
+
+class AnalysisAgent:
     def __init__(self):
         self.client = genai.Client()
         self.model = "gemini-3.5-flash-lite"
-    async def run(self, request, user_id, user_access, context):
+
+    async def run(
+        self,
+        request: str,
+        user_id: str,
+        user_access: int,
+        context: str = "",
+    ):
         prompt = f"""
         Task:
         {request}
 
         Additional context:
-        {context}
+        {context or "No additional context was provided."}
 
         Analyze the task carefully and return a useful result.
         """
@@ -44,11 +54,11 @@ class Analysis_agent:
             """
         )
 
-        response = self.client.models.generate_content(
+        response = await asyncio.to_thread(
+            self.client.models.generate_content,
             model=self.model,
             contents=prompt,
             config=config,
         )
 
         return response.text
-    
