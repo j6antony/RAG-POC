@@ -36,6 +36,49 @@ def get_available_agents():
     return "\n".join(lines)
 
 
+async def ensure_conversation(conversation_id, user_id, request, supabase):
+    existing = (
+        supabase
+        .table("conversations")
+        .select("id,user_id")
+        .eq("id", str(conversation_id))
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+
+    if existing:
+        if str(existing[0]["user_id"]) != str(user_id):
+            raise ValueError("Conversation is not available to this user.")
+        return
+
+    name = request.strip().replace("\n", " ")[:60] or "New conversation"
+    supabase.table("conversations").insert({
+        "id": str(conversation_id),
+        "user_id": str(user_id),
+        "name": name,
+    }).execute()
+
+
+async def save_conversation_message(
+    conversation_id,
+    user_id,
+    role,
+    text,
+    supabase,
+):
+    if not text:
+        return
+
+    supabase.table("conversation_messages").insert({
+        "conversation_id": str(conversation_id),
+        "user_id": str(user_id),
+        "role": role,
+        "text": text,
+    }).execute()
+
+
 async def get_available_chats(current_conversation_id, user_id, supabase):
     response = (
         supabase
@@ -282,8 +325,24 @@ async def run_agent(
     user_access,
     supabase,
     allow_chat_delegation=True,
+    persist_turn=True,
 ):
     client = genai.Client()
+
+    if persist_turn:
+        await ensure_conversation(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            request=request,
+            supabase=supabase,
+        )
+        await save_conversation_message(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            role="user",
+            text=request,
+            supabase=supabase,
+        )
 
     tool_handler = Tools(
         web=Web(),
@@ -398,9 +457,20 @@ Current request:
         function_calls = response.function_calls
 
         if not function_calls:
+            answer = response.text or ""
             print(f"[COORDINATOR] Final response produced on round {tool_round}")
+
+            if persist_turn:
+                await save_conversation_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    role="assistant",
+                    text=answer,
+                    supabase=supabase,
+                )
+
             return {
-                "answer": response.text,
+                "answer": answer,
                 "images": list(tool_handler.images.values()),
             }
 
@@ -547,9 +617,7 @@ async def delegate_to_chat(
             supabase=supabase,
         )
 
-        print(
-            f"[A2A CHAT] Loaded {len(target_history)} messages from target chat"
-        )
+        print(f"[A2A CHAT] Loaded {len(target_history)} messages from target chat")
 
         delegated_request = request
         if context:
@@ -568,6 +636,7 @@ async def delegate_to_chat(
             user_access=user_access,
             supabase=supabase,
             allow_chat_delegation=False,
+            persist_turn=False,
         )
 
         supabase.table("agent_tasks").update({
@@ -633,6 +702,7 @@ async def process_pending_tasks(
                 user_access=user_access,
                 supabase=supabase,
                 allow_chat_delegation=False,
+                persist_turn=False,
             )
 
             supabase.table("agent_tasks").update({
