@@ -428,3 +428,114 @@ async def call_gemini_with_retry(client, contents, config):
             await asyncio.sleep(wait_seconds)
 
     raise RuntimeError("Gemini did not return a response.")
+
+
+async def delegate_to_agent(
+    target_conversation_id,
+    request,
+    context,
+    source_conversation_id,
+    user_id,
+    user_access,
+    supabase,
+):
+    task = (
+        supabase
+        .table("agent_tasks")
+        .insert({
+            "source_conversation_id": source_conversation_id,
+            "target_conversation_id": target_conversation_id,
+            "user_id": user_id,
+            "task": request,
+            "context": context,
+            "status": "pending",
+        })
+        .execute()
+    )
+
+    task_id =  task.data[0]
+
+    result = await run_agent(
+        request=request,
+        history=[],
+        user_id=user_id,
+        username="",
+        user_access=user_access,
+        supabase=supabase,
+    )
+
+    supabase.table("agent_tasks").update({
+        "status": "completed",
+        "result": result["answer"],
+    }).eq(
+        "id",
+        task_id
+    ).execute()
+
+    return result["answer"]
+
+
+async def get_pending_tasks(
+    conversation_id,
+    user_id,
+    supabase,
+):
+    response = (
+        supabase
+        .table("agent_tasks")
+        .select("*")
+        .eq("target_conversation_id", str(conversation_id))
+        .eq("user_id", user_id)
+        .eq("status", "pending")
+        .execute()
+    )
+
+    return response.data
+
+async def process_pending_tasks(
+    conversation_id,
+    user_id,
+    user_access,
+    supabase,
+):
+    tasks = await get_pending_tasks(
+        conversation_id,
+        user_id,
+        supabase,
+    )
+
+    for task in tasks:
+
+        supabase.table("agent_tasks").update({
+            "status": "running"
+        }).eq(
+            "id",
+            task["id"]
+        ).execute()
+
+        try:
+            result = await run_agent(
+                request=task["task"],
+                history=[],
+                user_id=user_id,
+                username="",
+                user_access=user_access,
+                supabase=supabase,
+            )
+
+            supabase.table("agent_tasks").update({
+                "status": "completed",
+                "result": result["answer"],
+            }).eq(
+                "id",
+                task["id"]
+            ).execute()
+
+        except Exception as exc:
+            supabase.table("agent_tasks").update({
+                "status": "failed",
+                "result": str(exc),
+            }).eq(
+                "id",
+                task["id"]
+            ).execute()
