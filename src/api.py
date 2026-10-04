@@ -89,6 +89,7 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
         history=request.history,
         user_id=user.id,
         username=username,
+        conversation_id=request.conversation_id,
         user_access=user_access,
         supabase=supabase
     )
