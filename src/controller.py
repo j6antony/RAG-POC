@@ -1,42 +1,41 @@
-from google import genai
-from google.genai import types, errors
+import asyncio
 
+from google import genai
+from google.genai import errors, types
+
+from analysis_agent import AnalysisAgent
 from tools import Tools
 from web import Web
-from analysis_agent import Analysis_agent
-
-import asyncio
-import supabase
 
 
-# to prevent the ai from using up too many resources and taking a long time
+# Prevent the AI from using too many resources or looping for too long.
 MAX_TOOL_CALLS = 5
 MODEL = "gemini-3.5-flash-lite"
-analysis_agent = Analysis_agent()
+
+analysis_agent = AnalysisAgent()
+
 AGENTS = {
-    #"knowledge": {"description": "Searches internal company documents and RAG knowledge.", "agent": knowledge_agent},
-   # "web": {"description": "Searches external web sources.", "agent": web_agent},
-    "analysis": {"description": (
+    "analysis": {
+        "description": (
             "Analyzes provided information, compares results, identifies "
             "patterns or contradictions, and produces conclusions."
         ),
         "agent": analysis_agent,
-        }
     }
+}
+
 
 def get_available_agents():
     if not AGENTS:
         return "No additional agents are currently available."
-    lines = ["Available agents:"]
 
+    lines = ["Available agents:"]
     for name, config in AGENTS.items():
-        lines.append(
-            f"-{name}: {config["dicription"]}"
-        )
+        lines.append(f"- {name}: {config['description']}")
+
     return "\n".join(lines)
 
 
-# teaching gemini how to call each of the given functions
 search_internal_decl = types.FunctionDeclaration(
     name="search_internal",
     description=(
@@ -49,11 +48,11 @@ search_internal_decl = types.FunctionDeclaration(
         "properties": {
             "request": {
                 "type": "string",
-                "description": "The search query to use for internal retrieval."
+                "description": "The search query to use for internal retrieval.",
             }
         },
-        "required": ["request"]
-    }
+        "required": ["request"],
+    },
 )
 
 search_web_decl = types.FunctionDeclaration(
@@ -67,12 +66,13 @@ search_web_decl = types.FunctionDeclaration(
         "properties": {
             "request": {
                 "type": "string",
-                "description": "The query to search on the web."
+                "description": "The query to search on the web.",
             }
         },
-        "required": ["request"]
-    }
+        "required": ["request"],
+    },
 )
+
 rewrite_query_decl = types.FunctionDeclaration(
     name="rewrite_query",
     description=(
@@ -85,12 +85,13 @@ rewrite_query_decl = types.FunctionDeclaration(
         "properties": {
             "request": {
                 "type": "string",
-                "description": "The conversational request that needs to be rewritten."
+                "description": "The conversational request that needs to be rewritten.",
             }
         },
-        "required": ["request"]
-    }
+        "required": ["request"],
+    },
 )
+
 get_user_facts_decl = types.FunctionDeclaration(
     name="get_user_facts",
     description=(
@@ -100,8 +101,8 @@ get_user_facts_decl = types.FunctionDeclaration(
     ),
     parameters={
         "type": "object",
-        "properties": {}
-    }
+        "properties": {},
+    },
 )
 
 save_user_fact_decl = types.FunctionDeclaration(
@@ -116,35 +117,46 @@ save_user_fact_decl = types.FunctionDeclaration(
         "properties": {
             "key": {
                 "type": "string",
-                "description": "A short normalized fact name, such as job or favorite_language."
+                "description": "A short normalized fact name, such as job or favorite_language.",
             },
             "value": {
                 "type": "string",
-                "description": "The value of the fact."
-            }
+                "description": "The value of the fact.",
+            },
         },
-        "required": ["key", "value"]
-    }
+        "required": ["key", "value"],
+    },
 )
 
-delegate_to_agent = types.FunctionDeclaration(
+delegate_to_agent_decl = types.FunctionDeclaration(
     name="delegate_to_agent",
-    description="Delegate a multi-step task to another available agent.",
+    description=(
+        "Delegate a multi-step task to another available agent. "
+        "Use this when an available agent is better suited to independently analyze "
+        "or process information than a single tool call."
+    ),
     parameters={
         "type": "object",
         "properties": {
             "agent_name": {
                 "type": "string",
                 "enum": list(AGENTS.keys()),
-                "description": "The registered agent to delegate the task to."
+                "description": "The registered agent to delegate the task to.",
             },
             "request": {
                 "type": "string",
-                "description": "A clear self-contained task for the agent."
-            }
+                "description": "A clear, self-contained task for the selected agent.",
+            },
+            "context": {
+                "type": "string",
+                "description": (
+                    "Relevant information the agent should use, such as results from "
+                    "internal or web searches. Only include context needed for the task."
+                ),
+            },
         },
-        "required": ["agent_name", "request"]
-    }
+        "required": ["agent_name", "request"],
+    },
 )
 
 tools = types.Tool(
@@ -153,9 +165,30 @@ tools = types.Tool(
         search_web_decl,
         rewrite_query_decl,
         get_user_facts_decl,
-        save_user_fact_decl
+        save_user_fact_decl,
+        delegate_to_agent_decl,
     ]
 )
+
+
+async def delegate_to_agent(
+    agent_name: str,
+    request: str,
+    user_id: str,
+    user_access: int,
+    context: str = "",
+):
+    if agent_name not in AGENTS:
+        raise ValueError(f"Unknown agent provided: {agent_name}")
+
+    agent = AGENTS[agent_name]["agent"]
+
+    return await agent.run(
+        request=request,
+        user_id=user_id,
+        user_access=user_access,
+        context=context,
+    )
 
 
 async def run_agent(
@@ -164,7 +197,7 @@ async def run_agent(
     user_id,
     username,
     user_access,
-    supabase
+    supabase,
 ):
     client = genai.Client()
 
@@ -172,13 +205,14 @@ async def run_agent(
         web=Web(),
         user_access=user_access,
         user_id=user_id,
-        supabase=supabase
+        supabase=supabase,
     )
 
     conversation = "\n".join(
         f"{message.role}: {message.text}"
         for message in history[-6:]
     )
+
     agent_context = get_available_agents()
 
     system_instruction = f"""
@@ -214,6 +248,7 @@ async def run_agent(
         - provide the exact registered agent name
         - provide a clear, self-contained task
         - include only relevant context
+        - use context to pass prior tool results when the delegated task depends on them
         - do not delegate trivial actions
         - do not create circular delegation
 
@@ -223,8 +258,11 @@ async def run_agent(
 
         Delegating to another agent must never increase the user's permissions.
 
+        The delegated agent inherits the initiating user's identity and access level.
+
         You are responsible for combining tool and agent results into the final answer.
     """
+
     contents = [
         types.Content(
             role="user",
@@ -238,76 +276,83 @@ async def run_agent(
                     {request}
                     """
                 )
-            ]
+            ],
         )
     ]
 
     config = types.GenerateContentConfig(
         system_instruction=system_instruction,
         tools=[tools],
-
-        # we execute functions ourselves
         automatic_function_calling=types.AutomaticFunctionCallingConfig(
             disable=True
-        )
+        ),
     )
 
     for _ in range(MAX_TOOL_CALLS):
-
         response = await call_gemini_with_retry(
             client,
             contents=contents,
-            config=config
+            config=config,
         )
 
         candidate = response.candidates[0]
         model_content = candidate.content
-
-        # keep Gemini's response / function call in the conversation
         contents.append(model_content)
 
         function_calls = response.function_calls
 
-        # no tool call means Gemini is done
         if not function_calls:
-            return {"answer": response.text, "images": list(tool_handler.images.values())}
+            return {
+                "answer": response.text,
+                "images": list(tool_handler.images.values()),
+            }
 
         tool_response_parts = []
 
         for function_call in function_calls:
-
             name = function_call.name
             args = function_call.args or {}
-
-            # matches the "request" field in your function declarations
             tool_request = args.get("request", "")
 
-            if name == "search_internal":
+            try:
+                if name == "search_internal":
+                    result = await tool_handler.search_internal(tool_request)
 
-                result = await tool_handler.search_internal(
-                    tool_request
-                )
+                elif name == "search_web":
+                    result = await tool_handler.search_web(tool_request)
 
-            elif name == "search_web":
+                elif name == "rewrite_query":
+                    result = await tool_handler.rewrite_query(
+                        tool_request,
+                        history,
+                    )
 
-                result = await tool_handler.search_web(
-                    tool_request
-                )
-            elif name == "rewrite_query":
-                result = await tool_handler.rewrite_query(
-                    tool_request,
-                    history
-                )
-            elif name == "get_user_facts":
-                result = await tool_handler.get_user_facts()
-            elif name == "save_user_fact":
-                result = await tool_handler.save_user_fact(
-                    key=args.get("key", ""),
-                    value=args.get("value", "")
-                )
-            else:
+                elif name == "get_user_facts":
+                    result = await tool_handler.get_user_facts()
+
+                elif name == "save_user_fact":
+                    result = await tool_handler.save_user_fact(
+                        key=args.get("key", ""),
+                        value=args.get("value", ""),
+                    )
+
+                elif name == "delegate_to_agent":
+                    result = await delegate_to_agent(
+                        agent_name=args.get("agent_name", ""),
+                        request=tool_request,
+                        context=args.get("context", ""),
+                        user_id=user_id,
+                        user_access=user_access,
+                    )
+
+                else:
+                    result = {
+                        "error": f"Unknown tool: {name}"
+                    }
+
+            except Exception as exc:
                 result = {
-                    "error": f"Unknown tool: {name}"
+                    "error": f"{name} failed: {exc}"
                 }
 
             tool_response_parts.append(
@@ -315,19 +360,22 @@ async def run_agent(
                     name=name,
                     response={
                         "result": result
-                    }
+                    },
                 )
             )
 
-        # send the tool results back to Gemini
         contents.append(
             types.Content(
                 role="user",
-                parts=tool_response_parts
+                parts=tool_response_parts,
             )
         )
 
-    return {"answer": "I couldn't complete the request within the tool-call limit.", "images": list(tool_handler.images.values())}
+    return {
+        "answer": "I couldn't complete the request within the tool-call limit.",
+        "images": list(tool_handler.images.values()),
+    }
+
 
 async def call_gemini_with_retry(client, contents, config):
     for attempt in range(3):
@@ -336,7 +384,7 @@ async def call_gemini_with_retry(client, contents, config):
                 client.models.generate_content,
                 model=MODEL,
                 contents=contents,
-                config=config
+                config=config,
             )
 
         except errors.APIError as error:
@@ -356,15 +404,3 @@ async def call_gemini_with_retry(client, contents, config):
             await asyncio.sleep(wait_seconds)
 
     raise RuntimeError("Gemini did not return a response.")
-
-async def degelegate_to_agent(agent_name: str, request: str, user_id: str, user_access: int):
-    if agent_name not in AGENTS:
-        raise ValueError(f"Unknown agent provided: {agent_name}")
-    agent_config = AGENTS[agent_name]
-
-    agent = agent_config["agent"]
-    return await agent.run(
-        request,
-        user_id,
-        user_access
-    )
