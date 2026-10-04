@@ -16,6 +16,11 @@ class AnalysisAgent:
         user_access: int,
         context: str = "",
     ):
+        print(
+            f"[ANALYSIS AGENT] Starting task access={user_access} "
+            f"request_chars={len(request)} context_chars={len(context)}"
+        )
+
         prompt = f"""
         Task:
         {request}
@@ -54,11 +59,17 @@ class AnalysisAgent:
             """
         )
 
-        response = await asyncio.to_thread(
-            self.client.models.generate_content,
-            model=self.model,
-            contents=prompt,
-            config=config,
-        )
+        try:
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
+                model=self.model,
+                contents=prompt,
+                config=config,
+            )
+        except Exception as exc:
+            print(f"[ANALYSIS AGENT] Failed: {exc}")
+            raise
 
-        return response.text
+        result = response.text or ""
+        print(f"[ANALYSIS AGENT] Completed result_chars={len(result)}")
+        return result
