@@ -6,6 +6,7 @@ risk by validating tool inputs, bounding untrusted content, and clearly marking
 external/retrieved data as data rather than instructions.
 """
 
+from guardrail_audit import record_hit
 import re
 from typing import Any
 
@@ -33,19 +34,28 @@ _INJECTION_PATTERNS = [
 ]
 
 
+def _reject(reason, source):
+    record_hit(source=source, rule="invalid_tool_input", action="blocked", reason=reason)
+    raise ValueError(reason)
+
+
+def inspect_input(text, *, source="user_input"):
+    if looks_like_prompt_injection(text):
+        record_hit(source=source, rule="possible_prompt_injection", action="flagged",
+                   reason="Instruction-override phrasing detected. Heuristic warning; not proof of malicious intent.")
+
+
 def validate_tool_query(value: str, *, field_name: str = "request") -> str:
     """Validate and normalize text before it is used by a tool."""
     if not isinstance(value, str):
-        raise ValueError(f"{field_name} must be a string.")
+        _reject(f"{field_name} must be a string.", "tool_query")
 
     value = value.strip()
     if not value:
-        raise ValueError(f"{field_name} cannot be empty.")
+        _reject(f"{field_name} cannot be empty.", "tool_query")
 
     if len(value) > MAX_TOOL_QUERY_CHARS:
-        raise ValueError(
-            f"{field_name} is too long (maximum {MAX_TOOL_QUERY_CHARS} characters)."
-        )
+        _reject(f"{field_name} is too long (maximum {MAX_TOOL_QUERY_CHARS} characters).", "tool_query")
 
     # Drop NUL characters, which are never useful to these text tools.
     return value.replace("\x00", "")
@@ -53,17 +63,17 @@ def validate_tool_query(value: str, *, field_name: str = "request") -> str:
 
 def validate_fact(key: str, value: str) -> tuple[str, str]:
     if not isinstance(key, str) or not isinstance(value, str):
-        raise ValueError("Fact key and value must be strings.")
+        _reject("Fact key and value must be strings.", "save_user_fact")
 
     key = key.strip()
     value = value.strip()
 
     if not key or not value:
-        raise ValueError("Fact key and value cannot be empty.")
+        _reject("Fact key and value cannot be empty.", "save_user_fact")
     if len(key) > MAX_FACT_KEY_CHARS:
-        raise ValueError("Fact key is too long.")
+        _reject("Fact key is too long.", "save_user_fact")
     if len(value) > MAX_FACT_VALUE_CHARS:
-        raise ValueError("Fact value is too long.")
+        _reject("Fact value is too long.", "save_user_fact")
 
     return key.replace("\x00", ""), value.replace("\x00", "")
 
@@ -110,6 +120,9 @@ def _sanitize(value: Any) -> tuple[Any, bool]:
 def secure_untrusted_result(value: Any, *, source: str) -> dict:
     """Wrap tool/retrieval output so the model sees a clear trust boundary."""
     clean_value, suspicious = _sanitize(value)
+    if suspicious:
+        record_hit(source=source, rule="possible_prompt_injection", action="flagged",
+                   reason="Suspicious instructions found in untrusted content. Content was marked untrusted; the requesting user may not be its author.")
 
     return {
         "security_notice": (

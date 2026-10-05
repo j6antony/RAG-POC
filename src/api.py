@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from uuid import UUID
@@ -13,6 +13,8 @@ from fastapi.responses import Response
 from document_images import extract_pdf, store_images, can_view_document, BUCKET
 
 #from rag import answer_request
+from guardrail_audit import begin_audit, end_audit, persist_hits
+from guardrails import inspect_input
 from controller import run_agent
 from services import get_embedder, get_vectorDB
 from authentification import get_user_access
@@ -92,15 +94,21 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
     async def progress(event):
         await progress_queue.put(event)
     async def run():
-        return await run_agent(
-                request=request.message,
-                user_id=user.id,
-                username=username,
-                conversation_id=request.conversation_id,
-                user_access=user_access,
-                supabase=supabase, 
-                progress=progress,
-        )
+        token, events = begin_audit(user, request.conversation_id, user_access)
+        try:
+            inspect_input(request.message)
+            return await run_agent(
+                    request=request.message,
+                    user_id=user.id,
+                    username=username,
+                    conversation_id=request.conversation_id,
+                    user_access=user_access,
+                    supabase=supabase,
+                    progress=progress,
+            )
+        finally:
+            end_audit(token)
+            await asyncio.to_thread(persist_hits, supabase, events)
     def format_sse(event_type, data):
         payload = json.dumps(data)
 
@@ -370,3 +378,30 @@ def conversation_messages(conversation_id, autherization: str = Header(...)):
     return {
         "messages": messages.data or []
     }
+
+@app.get("/me/access")
+def current_access(autherization: str = Header(...)):
+    user = get_current_user(autherization)
+    return {"access_level": get_user_access(supabase, user.id)}
+
+
+@app.get("/admin/guardrail-events")
+def guardrail_events(
+    autherization: str = Header(...),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=100),
+    action: Literal["flagged", "blocked"] | None = None,
+):
+    user = get_current_user(autherization)
+    if get_user_access(supabase, user.id) != 3:
+        raise HTTPException(status_code=403, detail="Admin access is required.")
+    try:
+        query = supabase.table("guardrail_events").select("*")
+        if action:
+            query = query.eq("action", action)
+        result = query.order("created_at", desc=True).order("id", desc=True).range(offset, offset + limit).execute()
+    except Exception:
+        logging.getLogger(__name__).error("Guardrail history unavailable; check migration and database access.")
+        raise HTTPException(status_code=503, detail="Guardrail history is unavailable. Check that the guardrail events migration has been applied.")
+    rows = result.data or []
+    return {"events": rows[:limit], "has_more": len(rows) > limit}

@@ -52,11 +52,11 @@ test('preserves POST authentication, progress, HTTP errors, JSON compatibility a
   const original = globalThis.localStorage;
   globalThis.localStorage = { getItem: () => 'test' };
   t.after(() => { if (original === undefined) delete globalThis.localStorage; else globalThis.localStorage = original; });
-  assert.equal((await askQuestion('Hello', [], 'conversation', {signal: new AbortController().signal})).answer, 'Done');
+  assert.equal((await askQuestion('Hello', 'conversation', {signal: new AbortController().signal})).answer, 'Done');
   globalThis.fetch.mock.mockImplementation(async () => new Response(JSON.stringify({detail:'Expired token'}), {status:401}));
-  await assert.rejects(askQuestion('Hello', [], 'conversation'), /Expired token/);
+  await assert.rejects(askQuestion('Hello', 'conversation'), /Expired token/);
   globalThis.fetch.mock.mockImplementation(async () => new Response(JSON.stringify({answer:'Legacy answer'}), {headers:{'Content-Type':'application/json'}}));
-  assert.equal((await askQuestion('Hello', [], 'conversation')).answer, 'Legacy answer');
+  assert.equal((await askQuestion('Hello', 'conversation')).answer, 'Legacy answer');
 });
 
 test('propagates cancellation rather than reporting completion', async () => {

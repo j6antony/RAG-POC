@@ -297,3 +297,28 @@ Offline regression checks (no cloud writes or model downloads):
 .venv/bin/python -m unittest discover -s tests -p test_roles.py
 npm --prefix Frontend run build
 ```
+
+## Admin guardrail activity
+
+Apply `supabase/migrations/20261005_guardrail_events.sql` in the Supabase SQL
+editor, then restart the backend. The backend's `SUPABASE_KEY` must be its
+server-only service-role key: browser roles have no direct access to this audit
+table. No historic events are backfilled.
+
+Accounts with a server-assigned access level of 3 see **Guardrail activity** in
+the chat header. The page lists requesting users, timestamps, sources, outcomes,
+reasons, and conversation IDs, with outcome filtering and 25-event pages.
+`GET /admin/guardrail-events` independently authenticates and checks level 3 on
+every request. `GET /me/access` supplies the navigation's verified access level.
+
+Events are collected per chat request, including delegated work in that request,
+and saved when the request finishes or fails. Injection heuristics create
+warnings; invalid tool inputs create blocked events. A requesting user is not
+necessarily the author of a flagged retrieved document or web result. Raw prompts
+and document text are not copied to the audit table. Persistence failures are
+logged on the server without failing the chat; this is best-effort logging, not
+a guaranteed audit delivery queue.
+
+The existing demo signup flow permits choosing the admin role. Restrict role
+assignment before using this application with users who must not grant themselves
+admin access.

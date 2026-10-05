@@ -136,7 +136,8 @@ export async function getConversation() {
         : 'Failed to load conversation'
     );
   }
-  return data.conversations ?? [];
+  if (!Array.isArray(data?.conversations)) throw new Error('Invalid conversation history response.');
+  return data.conversations;
 }
 
 export async function getConversationMessages(conversationId) {
@@ -158,6 +159,24 @@ export async function getConversationMessages(conversationId) {
     );
   }
 
-  return data.messages ?? []
+  if (!Array.isArray(data?.messages)) throw new Error('Invalid conversation messages response.');
+  return data.messages;
   
+}
+
+export async function getAccess(signal) {
+  const response = await fetch(`${api_url}/me/access`, { headers: { Autherization: `Bearer ${getToken()}` }, signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || ![1, 2, 3].includes(data?.access_level)) throw new Error('Unable to verify account access.');
+  return data.access_level;
+}
+
+export async function getGuardrailEvents({ offset = 0, action = '', signal } = {}) {
+  const params = new URLSearchParams({ offset: String(offset), limit: '25' });
+  if (action) params.set('action', action);
+  const response = await fetch(`${api_url}/admin/guardrail-events?${params}`, { headers: { Autherization: `Bearer ${getToken()}` }, signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.detail || 'Unable to load guardrail events.');
+  if (!Array.isArray(data?.events) || typeof data.has_more !== 'boolean') throw new Error('Invalid guardrail events response.');
+  return data;
 }
