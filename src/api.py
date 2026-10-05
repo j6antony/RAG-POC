@@ -360,11 +360,11 @@ def conversation_messages(conversation_id, autherization: str = Header(...)):
     # retain all the messages from the given conversation
     messages = (
         supabase
-        .table("conversations")
+        .table("conversation_messages")
         .select("id", "role", "text", "created_at")
         .eq("conversation_id", str(conversation_id))
         .eq("user_id", str(user.id))
-        .order("created_at", desc=True) # pretty sure it should be descending false but lets try if it looks cooked this is why
+        .order("created_at", desc=False) 
         .execute()
     )
     return {

@@ -2,7 +2,7 @@ import { readChatStream } from './sse.js';
 
 const api_url = "http://127.0.0.1:8000";
 
-export async function askQuestion(question, history, conversationId, { onProgress, signal } = {}) {
+export async function askQuestion(question, conversationId, { onProgress, signal } = {}) {
   const response = await fetch(`${api_url}/chat`, {
     method: 'POST',
     signal,
@@ -118,4 +118,46 @@ export async function getKnowledgeImage(imageId, signal) {
   });
   if (!response.ok) throw new Error('Image unavailable or access has changed.');
   return response.blob();
+}
+// api functions for history
+
+export async function getConversation() {
+  const response = await fetch(`${api_url}/conversations`, {
+    headers: {
+      Autherization: `Bearer ${getToken()}`,
+    },
+  });
+  const data = await response.json().catch(()=>null);
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data?.detail === 'string'
+        ? data.detail
+        : 'Failed to load conversation'
+    );
+  }
+  return data.conversations ?? [];
+}
+
+export async function getConversationMessages(conversationId) {
+  const response = await fetch(
+    `${api_url}/conversations/${encodeURIComponent(conversationId)}/messages`,
+    {
+      headers: {
+        Autherization:  `Bearer ${getToken()}`,
+      },
+    }
+  );
+  const data = await response.json().catch(()=>null);
+
+  if (!response.ok) {
+    throw new Error (
+      typeof data?.detail === 'string'
+        ? data.detail
+        : 'Failed to load conversation.'
+    );
+  }
+
+  return data.message ?? []
+  
 }

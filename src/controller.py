@@ -348,11 +348,12 @@ async def run_agent(
             request=request,
             supabase=supabase,
         )
-        history = await get_conversation_history(
-            conversation_id=conversation_id,
-            user_id = user_id,
-            supabase=supabase
-        )
+    history = await get_conversation_history(
+        conversation_id=conversation_id,
+        user_id = user_id,
+        supabase=supabase
+    )
+    if persist_turn:
         await save_conversation_message(
             conversation_id=conversation_id,
             user_id=user_id,
@@ -542,7 +543,6 @@ Current request:
                         current_conversation_id=conversation_id,
                         user_id=user_id,
                         supabase=supabase,
-                        progress=progress
                     )
                     result = await delegate_to_chat(
                         target_conversation_id=target_id,
@@ -637,13 +637,6 @@ async def delegate_to_chat(
     task_id = task.data[0]["id"]
 
     try:
-        target_history = await get_conversation_history(
-            conversation_id=target_conversation_id,
-            user_id=user_id,
-            supabase=supabase,
-        )
-
-        print(f"[A2A CHAT] Loaded {len(target_history)} messages from target chat")
 
         delegated_request = request
         if context:
@@ -655,7 +648,6 @@ async def delegate_to_chat(
 
         result = await run_agent(
             request=delegated_request,
-            history=target_history,
             user_id=user_id,
             username="",
             conversation_id=target_conversation_id,

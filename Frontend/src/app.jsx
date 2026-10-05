@@ -3,7 +3,8 @@ import ChatInput from './components/chatinput';
 import ChatWindow from './components/chatwindow';
 import DocumentPanel from './components/documentpanel';
 import AuthPage from './components/authpage';
-import { askQuestion } from './services/api';
+import { askQuestion, getConversation, getConversationMessages } from './services/api';
+
 
 const exampleQuestions = [
   { question: 'How many vacation days do I get?' },
@@ -29,7 +30,53 @@ export default function App() {
   const busy = useRef(false);
   const activeStream = useRef(null);
   const [progress, setProgress] = useState([]);
+  const [conversations, setconversations] = useState()
+  
   useEffect(() => () => activeStream.current?.abort(), []);
+  useEffect(() => {
+    if (!user) return;
+
+    async function loadConversations() {
+      try {
+        const data = await getConversation();
+        setconversations(data)
+      } catch (error) {
+        console.error ("Failed to load conversations", error);
+      }
+    }
+    loadConversations();
+  }, [user]);
+
+ 
+  async function openConversation(conversation) {
+    if (busy.current) return;
+
+    activeStream.current?.abort();
+    request.current += 1;
+
+    try {
+      const storedMessages = await getConversationMessages(conversation.id);
+
+      setConversationId(conversation.id);
+
+      setMessages(
+        storedMessages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          text: message.text,
+        }))
+      );
+      // this is actually an error as it is always refresshing for new chats rather than letting the backend register the chat and refresh the sidebar when it does need to rework the entire design to fix this though so for now I left it as is
+      const updatedConversations = await getConversations();
+      setConversations(updatedConversations);
+
+      setError(null);
+      setProgress([]);
+
+    } catch (error) {
+      console.error("Failed to open conversation:", error);
+    }
+  }
 
   async function sendMessage(text, retry = false) {
     const question = text.trim();
@@ -43,7 +90,7 @@ export default function App() {
     setError(null);
     if (!retry) setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'user', text: question }]);
     try {
-      const result = await askQuestion(question, retry ? messages.slice(0, -1) : messages, conversationId, {
+      const result = await askQuestion(question, conversationId, {
         signal: controller.signal,
         onProgress: (event) => {
           if (currentRequest !== request.current) return;
