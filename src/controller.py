@@ -319,9 +319,8 @@ async def delegate_to_agent(
 
 async def run_agent(
     request,
-    history,
     user_id,
-    username,
+    username, # see how to remove this it seems redundant
     conversation_id,
     user_access,
     supabase,
@@ -348,6 +347,11 @@ async def run_agent(
             user_id=user_id,
             request=request,
             supabase=supabase,
+        )
+        history = await get_conversation_history(
+            conversation_id=conversation_id,
+            user_id = user_id,
+            supabase=supabase
         )
         await save_conversation_message(
             conversation_id=conversation_id,

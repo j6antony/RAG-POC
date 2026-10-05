@@ -11,7 +11,7 @@ export async function askQuestion(question, history, conversationId, { onProgres
       Accept: 'text/event-stream',
       Autherization: `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ message: question, history: history.slice(-6), conversation_id: conversationId }),
+    body: JSON.stringify({ message: question, conversation_id: conversationId }),
   });
   if (!response.ok) {
     const data = await response.json().catch(() => null);

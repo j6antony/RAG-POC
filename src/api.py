@@ -72,7 +72,7 @@ class HistoryMessage(BaseModel):
     text: str
 class ChatRequest(BaseModel):
     message: str
-    history: list[HistoryMessage]
+    #history: list[HistoryMessage] removing react passing chat history
     conversation_id: UUID
 @app.post("/chat")
 async def chat(request: ChatRequest, autherization: str = Header(...)):
@@ -94,7 +94,6 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
     async def run():
         return await run_agent(
                 request=request.message,
-                history=request.history,
                 user_id=user.id,
                 username=username,
                 conversation_id=request.conversation_id,
@@ -340,3 +339,34 @@ def get_knowledge_image(image_id: UUID, autherization: str = Header(...)):
         raise HTTPException(status_code=404, detail="Image not found")
     content = supabase.storage.from_(BUCKET).download(image["image_path"])
     return Response(content, media_type="image/png", headers={"Cache-Control": "private, no-store"})
+
+@app.get("/conversations")
+def get_conversations(autherization: str = Header(...)):
+    user = get_current_user(authorization=autherization)
+    result = (
+        supabase.table("conversations").select("id", "name", "created_at").eq("user_id", str(user.id)).order("created_at", desc=True).execute()
+    )
+    return {
+        "conversations": result.data or []
+    }
+
+@app.get("/conversations/{conversation_id}/messages")
+def conversation_messages(conversation_id, autherization: str = Header(...)):
+    user = get_current_user(autherization)
+    #check if the conversation exists first
+    conversation = supabase.table("conversations").select("id").eq("id", str(conversation_id)).eq("user_id", str(user.id)).limit(1).execute()
+    if not conversation.data:
+        raise HTTPException(status_code=404, detail="No conversation found")
+    # retain all the messages from the given conversation
+    messages = (
+        supabase
+        .table("conversations")
+        .select("id", "role", "text", "created_at")
+        .eq("conversation_id", str(conversation_id))
+        .eq("user_id", str(user.id))
+        .order("created_at", desc=True) # pretty sure it should be descending false but lets try if it looks cooked this is why
+        .execute()
+    )
+    return {
+        "messages": messages.data or []
+    }
