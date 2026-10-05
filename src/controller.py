@@ -706,15 +706,9 @@ async def process_pending_tasks(
         }).eq("id", task["id"]).execute()
 
         try:
-            target_history = await get_conversation_history(
-                conversation_id=conversation_id,
-                user_id=user_id,
-                supabase=supabase,
-            )
 
             result = await run_agent(
                 request=task["task"],
-                history=target_history,
                 user_id=user_id,
                 username="",
                 conversation_id=conversation_id,

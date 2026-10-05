@@ -158,6 +158,6 @@ export async function getConversationMessages(conversationId) {
     );
   }
 
-  return data.message ?? []
+  return data.messages ?? []
   
 }

@@ -30,7 +30,7 @@ export default function App() {
   const busy = useRef(false);
   const activeStream = useRef(null);
   const [progress, setProgress] = useState([]);
-  const [conversations, setconversations] = useState()
+  const [conversations, setConversations] = useState()
   
   useEffect(() => () => activeStream.current?.abort(), []);
   useEffect(() => {
@@ -66,9 +66,6 @@ export default function App() {
           text: message.text,
         }))
       );
-      // this is actually an error as it is always refresshing for new chats rather than letting the backend register the chat and refresh the sidebar when it does need to rework the entire design to fix this though so for now I left it as is
-      const updatedConversations = await getConversations();
-      setConversations(updatedConversations);
 
       setError(null);
       setProgress([]);
@@ -89,6 +86,9 @@ export default function App() {
     setPending(true);
     setError(null);
     if (!retry) setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'user', text: question }]);
+    // this is actually an error as it is always refresshing for new chats rather than letting the backend register the chat and refresh the sidebar when it does need to rework the entire design to fix this though so for now I left it as is
+    const updatedConversations = await getConversation();
+    setConversations(updatedConversations);
     try {
       const result = await askQuestion(question, conversationId, {
         signal: controller.signal,
@@ -100,6 +100,9 @@ export default function App() {
       if (currentRequest !== request.current) return;
       if (typeof result.answer !== 'string') throw new Error('Invalid response');
       setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', text: result.answer, sources: result.sources ?? [], images: result.images ?? [] }]);
+        // this is actually an error as it is always refresshing for new chats rather than letting the backend register the chat and refresh the sidebar when it does need to rework the entire design to fix this though so for now I left it as is
+      const updatedConversations = await getConversation();
+      setConversations(updatedConversations);
     } catch (error) {
       console.error(error);
       if (currentRequest === request.current) {
