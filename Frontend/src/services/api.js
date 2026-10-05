@@ -1,27 +1,29 @@
-// Contract: askQuestion(question) -> { answer, sources: [{ title, section, text }] }
+import { readChatStream } from './sse.js';
+
 const api_url = "http://127.0.0.1:8000";
-// this would not work becuase token capture to early 
-//const token = localStorage.getItem("access_token");
 
-
-export async function askQuestion(question, history, conversationId) {
+export async function askQuestion(question, history, conversationId, { onProgress, signal } = {}) {
   const response = await fetch(`${api_url}/chat`, {
     method: 'POST',
+    signal,
     headers: {
       'Content-Type': 'application/json',
-      'Autherization': `Bearer ${getToken()}`,
+      Accept: 'text/event-stream',
+      Autherization: `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ message: question, history: history.slice(-6), conversation_id: conversationId}),
+    body: JSON.stringify({ message: question, history: history.slice(-6), conversation_id: conversationId }),
   });
-
-  const data = await response.json().catch(() => null);
-
   if (!response.ok) {
-    // The question marks are like a wierd way of chaining conditional statements
-    const detail = data?.detail ?? response.statusText;
+    const data = await response.json().catch(() => null);
+    const detail = typeof data?.detail === 'string' ? data.detail : response.statusText;
     throw new Error(`Backend request failed with status ${response.status}: ${detail}`);
   }
-
+  if (response.headers.get('content-type')?.includes('text/event-stream')) {
+    return readChatStream(response.body, onProgress);
+  }
+  // Keep compatibility with a backend still returning the previous JSON contract.
+  const data = await response.json();
+  if (typeof data?.answer !== 'string') throw new Error('Invalid backend response.');
   return data;
 }
 

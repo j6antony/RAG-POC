@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ChatInput from './components/chatinput';
 import ChatWindow from './components/chatwindow';
 import DocumentPanel from './components/documentpanel';
@@ -27,17 +27,29 @@ export default function App() {
   const [error, setError] = useState(null);
   const request = useRef(0);
   const busy = useRef(false);
+  const activeStream = useRef(null);
+  const [progress, setProgress] = useState([]);
+  useEffect(() => () => activeStream.current?.abort(), []);
 
   async function sendMessage(text, retry = false) {
     const question = text.trim();
     if (!question || busy.current) return;
     busy.current = true;
     const currentRequest = ++request.current;
+    const controller = new AbortController();
+    activeStream.current = controller;
+    setProgress([{ stage: 'connecting', message: 'Connecting to the assistant…' }]);
     setPending(true);
     setError(null);
     if (!retry) setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'user', text: question }]);
     try {
-      const result = await askQuestion(question, retry ? messages.slice(0, -1) : messages, conversationId);
+      const result = await askQuestion(question, retry ? messages.slice(0, -1) : messages, conversationId, {
+        signal: controller.signal,
+        onProgress: (event) => {
+          if (currentRequest !== request.current) return;
+          setProgress((previous) => [...previous, event]);
+        },
+      });
       if (currentRequest !== request.current) return;
       if (typeof result.answer !== 'string') throw new Error('Invalid response');
       setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', text: result.answer, sources: result.sources ?? [], images: result.images ?? [] }]);
@@ -52,12 +64,16 @@ export default function App() {
     } finally {
       if (currentRequest === request.current) {
         busy.current = false;
+        activeStream.current = null;
         setPending(false);
       }
     }
   }
 
   function resetChat() {
+    activeStream.current?.abort();
+    activeStream.current = null;
+    setProgress([]);
     setConversationId(crypto.randomUUID());
     request.current += 1;
     busy.current = false;
@@ -90,7 +106,7 @@ export default function App() {
       <main id="main" className="main-panel">
         <div className="chat-layout">
           <header className="conversation-header"><div><h1>Document chat</h1><p className="account-caption">{user.name} <span>· Demo session</span></p></div><div className="header-actions"><button className="new-chat" onClick={resetChat}>New conversation</button><button className="new-chat" onClick={signOut}>Sign out</button></div></header>
-          <ChatWindow messages={messages} pending={pending} onSelectQuestion={sendMessage} examples={exampleQuestions} />
+          <ChatWindow messages={messages} pending={pending} progress={progress} failed={Boolean(error)} onSelectQuestion={sendMessage} examples={exampleQuestions} />
           {error && <div className="error-notice" role="alert">{error.text}<button onClick={() => sendMessage(error.question, true)}>Retry</button></div>}
           <div className="composer-area"><ChatInput key={conversationId} onSendMessage={sendMessage} disabled={pending || Boolean(error)} /><p className="disclaimer">Answers come from your local RAG backend.</p></div>
         </div>

@@ -147,3 +147,9 @@ a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid 
 .knowledge-image img { display: block; max-width: 100%; max-height: 360px; object-fit: contain; margin: auto; }
 .knowledge-image figcaption { margin-top: 10px; font-size: 11px; color: #666; overflow-wrap: anywhere; }
 .knowledge-image p { font-size: 12px; }
+
+.chat-progress { margin: 12px 0; padding: 12px 14px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fafafa; }
+.chat-progress .thinking { margin: 0; padding: 0; }
+.chat-progress summary { margin-top: 8px; cursor: pointer; font-size: 12px; color: #666; }
+.chat-progress ol { margin: 12px 0 0; padding-left: 20px; font-size: 12px; line-height: 1.8; color: #666; }
+.chat-progress li[aria-current="step"] { font-weight: 600; color: #242424; }

@@ -538,6 +538,7 @@ Current request:
                         current_conversation_id=conversation_id,
                         user_id=user_id,
                         supabase=supabase,
+                        progress=progress
                     )
                     result = await delegate_to_chat(
                         target_conversation_id=target_id,
@@ -608,6 +609,7 @@ async def delegate_to_chat(
     user_id,
     user_access,
     supabase,
+    progress=None
 ):
     print(
         f"[A2A CHAT] source={source_conversation_id} target={target_conversation_id} "
@@ -657,6 +659,7 @@ async def delegate_to_chat(
             supabase=supabase,
             allow_chat_delegation=False,
             persist_turn=False,
+            progress=progress
         )
 
         supabase.table("agent_tasks").update({
