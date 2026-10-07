@@ -96,7 +96,7 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
     async def run():
         token, events = begin_audit(user, request.conversation_id, user_access)
         try:
-            inspect_input(request.message)
+            await inspect_input(request.message)
             return await run_agent(
                     request=request.message,
                     user_id=user.id,

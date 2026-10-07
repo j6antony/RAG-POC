@@ -9,7 +9,8 @@ external/retrieved data as data rather than instructions.
 from guardrail_audit import record_hit
 import re
 from typing import Any
-
+from google import genai
+import os
 
 MAX_TOOL_QUERY_CHARS = 2000
 MAX_UNTRUSTED_STRING_CHARS = 8000
@@ -39,10 +40,15 @@ def _reject(reason, source):
     raise ValueError(reason)
 
 
-def inspect_input(text, *, source="user_input"):
+async def inspect_input(text, *, source="user_input"):
     if looks_like_prompt_injection(text):
         record_hit(source=source, rule="possible_prompt_injection", action="flagged",
                    reason="Instruction-override phrasing detected. Heuristic warning; not proof of malicious intent.")
+    relevence = await check_company_relevance(text)
+    if not relevence:
+        record_hit(source=source, rule="Unrelated_context", action="blocked", reason="Provided question is outside the scope of the chatbot")
+        raise ValueError ("This chatbot can only answer company related or work related questions.")
+
 
 
 def validate_tool_query(value: str, *, field_name: str = "request") -> str:
@@ -59,6 +65,49 @@ def validate_tool_query(value: str, *, field_name: str = "request") -> str:
 
     # Drop NUL characters, which are never useful to these text tools.
     return value.replace("\x00", "")
+async def check_company_relevance(request):
+    RELEVANCE_PROMPT = """
+        You are a relevance classifier for an internal company chatbot.
+
+        Your task is to decide whether the user's request is relevant to legitimate company or work-related use.
+
+        ALLOW requests that:
+        - ask about company information, policies, procedures, products, services, customers, or internal operations
+        - involve company documents or data
+        - ask for help completing legitimate work tasks
+        - ask for general knowledge that is reasonably useful for completing work
+
+        BLOCK requests that:
+        - are unrelated personal questions
+        - are entertainment, trivia, casual conversation, or unrelated general knowledge
+        - have no reasonable connection to company or work use
+
+        Return exactly one word:
+
+        ALLOW
+
+        or
+
+        BLOCK
+
+        User request:
+        {message}
+        """
+
+    # I think I should add client to services since I will have to open this twice in every service which is sort of
+    client = genai.Client(
+        api_key=os.getenv("GEMINI_API_KEY")
+    )
+    prompt = RELEVANCE_PROMPT.format(message=request)
+
+    response = await client.aio.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt
+    )
+
+    decision = response.text.strip().upper()
+
+    return decision == "ALLOW"
 
 
 def validate_fact(key: str, value: str) -> tuple[str, str]:
