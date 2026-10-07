@@ -217,24 +217,26 @@ async def upload_file(file: UploadFile = File(...), autherization: str = Header(
         "restricted": 3
     }
 
-    required_level = CLASSIFICATIONS_LEVEL[classification]
+    classification = classification.lower().strip()
+    if classification not in CLASSIFICATIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid document classification"
+        )
+
+    required_level = CLASSIFICATIONS_LEVELS[classification]
     if access_level < required_level:
         raise HTTPException(
             status_code=400,
             detail=f"{classification.title()} documents require access level of {required_level} or higher"
         )
+
     if access_level == 1:
         visibility = "user"
     elif access_level == 2:
         visibility = "manager"
     else:
         visibility = "admin"
-    classification = classification.lower().strip()
-    if classification not in CLASSIFICATIONS:
-        raise HTTPException(
-            status_code= 400,
-            detail="Invalid document classification"
-        )
     embedder = get_embedder()
     vectorDB = get_vectorDB()
     response = (
@@ -271,7 +273,7 @@ async def upload_file(file: UploadFile = File(...), autherization: str = Header(
             "filename": file.filename,
             "visibility": visibility,
             "classification": classification,
-            "contains_senstive_data": contains_sensitive_data,
+            "contains_sensitive_data": contains_sensitive_data,
             "image_count": len(images)
         }
 @app.post("/login")
