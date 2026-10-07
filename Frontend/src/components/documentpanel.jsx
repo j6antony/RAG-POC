@@ -13,7 +13,7 @@ export default function DocumentPanel() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const loadRequest = useRef(0);
-  const [classification, stClassification] = useState('internal');
+  const [classification, setClassification] = useState('internal');
   const [containsSensitiveData, setContainsSensitiveData] = useState(false);
 
 
@@ -138,7 +138,7 @@ export default function DocumentPanel() {
         {!loadError && <ul>{documents.map((document) => (
           <li className="document-item" key={document.id}>
             <span aria-hidden="true">▤</span>
-            <span><strong>{document.filename}</strong><small>Level {document.access_level}</small>
+            <span><strong>{document.filename}</strong><small>Level {document.access_level} · {document.classification}{document.contains_sensitive_data ? ' · Sensitive' : ''}</small>
               {document.created_at && !Number.isNaN(Date.parse(document.created_at)) && <time dateTime={document.created_at}>{new Date(document.created_at).toLocaleDateString()}</time>}
             </span>
           </li>
