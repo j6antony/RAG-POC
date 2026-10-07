@@ -101,11 +101,16 @@ async def check_company_relevance(request):
     prompt = RELEVANCE_PROMPT.format(message=request)
 
     response = await client.aio.models.generate_content(
-        model="gemini-2.5-flash-lite",
+        model="gemini-3.5-flash-lite",
         contents=prompt
     )
+    print("SCOPE INPUT:", request)
+    print("SCOPE RAW RESPONSE:", response.text)
 
     decision = response.text.strip().upper()
+
+    print("SCOPE DECISION:", decision)
+
 
     return decision == "ALLOW"
 

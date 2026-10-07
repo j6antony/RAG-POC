@@ -175,7 +175,7 @@ export default function App() {
           {openingId && <p className="document-status" role="status">Opening conversation…</p>}
           <ChatWindow messages={messages} pending={pending} progress={progress} failed={Boolean(error)} onSelectQuestion={sendMessage} examples={exampleQuestions} />
           {error && <div className="error-notice" role="alert">{error.text}<button onClick={() => error.conversation ? openConversation(error.conversation) : sendMessage(error.question, true)}>Retry</button></div>}
-          <div className="composer-area"><ChatInput key={conversationId} onSendMessage={sendMessage} disabled={pending || Boolean(openingId) || Boolean(error)} /><p className="disclaimer">Answers come from your local RAG backend.</p></div>
+          <div className="composer-area"><ChatInput key={conversationId} onSendMessage={sendMessage} disabled={pending || Boolean(openingId)} /><p className="disclaimer">Answers come from your local RAG backend.</p></div>
         </div>
       </main>
     </div>
