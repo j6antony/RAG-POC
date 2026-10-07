@@ -209,3 +209,9 @@ a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid 
 .audit-empty h2 { font-size: 18px; font-weight: 500; color: #333; }
 .audit-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 20px; font-size: 12px; color: #666; }
 @media (max-width: 600px) { .audit-page { padding: 20px 16px; } .audit-toolbar { align-items: flex-end; } .audit-toolbar label { flex-direction: column; align-items: flex-start; } }
+
+.audit-filters { display: flex; flex-wrap: wrap; gap: 16px; }
+.audit-success { color: #2b6841; background: #eaf5ed; }
+.audit-started { color: #315e84; background: #edf3fb; }
+.audit-failed { color: #873b29; background: #fff1ec; }
+@media (max-width: 600px) { .audit-filters { gap: 12px; } }

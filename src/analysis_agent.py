@@ -1,4 +1,5 @@
 import asyncio
+from guardrail_audit import record_event
 
 from google import genai
 from google.genai import types
@@ -75,6 +76,7 @@ class AnalysisAgent:
             """
         )
 
+        record_event(event_type="model_called", status="started", source="analysis_agent", model=self.model)
         try:
             response = await asyncio.to_thread(
                 self.client.models.generate_content,
@@ -83,9 +85,12 @@ class AnalysisAgent:
                 config=config,
             )
         except Exception as exc:
+            record_event(event_type="model_called", status="failed", source="analysis_agent", model=self.model,
+                         details={"error_type": type(exc).__name__})
             print(f"[ANALYSIS AGENT] Failed: {exc}")
             raise
 
+        record_event(event_type="model_called", source="analysis_agent", model=self.model)
         result = response.text or ""
         print(f"[ANALYSIS AGENT] Completed result_chars={len(result)}")
         return result

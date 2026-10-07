@@ -13,7 +13,7 @@ from fastapi.responses import Response
 from document_images import extract_pdf, store_images, can_view_document, BUCKET
 
 #from rag import answer_request
-from guardrail_audit import begin_audit, end_audit, persist_hits
+from guardrail_audit import begin_audit, end_audit, persist_hits, record_event
 from guardrails import inspect_input
 from controller import run_agent
 from services import get_embedder, get_vectorDB
@@ -96,6 +96,7 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
     async def run():
         token, events = begin_audit(user, request.conversation_id, user_access)
         try:
+            record_event(event_type="request_started", source="chat")
             await inspect_input(request.message)
             return await run_agent(
                     request=request.message,
@@ -106,6 +107,10 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
                     supabase=supabase,
                     progress=progress,
             )
+        except Exception as error:
+            record_event(event_type="request_failed", status="failed", source="chat",
+                         details={"error_type": type(error).__name__})
+            raise
         finally:
             end_audit(token)
             await asyncio.to_thread(persist_hits, supabase, events)
@@ -417,23 +422,26 @@ def current_access(autherization: str = Header(...)):
     return {"access_level": get_user_access(supabase, user.id)}
 
 
-@app.get("/admin/guardrail-events")
-def guardrail_events(
+@app.get("/admin/audit-events")
+def audit_events(
     autherization: str = Header(...),
     offset: int = Query(0, ge=0),
     limit: int = Query(25, ge=1, le=100),
-    action: Literal["flagged", "blocked"] | None = None,
+    event_type: Literal["request_started", "request_failed", "model_called", "tool_called", "document_retrieved", "guardrail", "response_generated"] | None = None,
+    status: Literal["started", "success", "failed", "flagged", "blocked"] | None = None,
 ):
     user = get_current_user(autherization)
     if get_user_access(supabase, user.id) != 3:
         raise HTTPException(status_code=403, detail="Admin access is required.")
     try:
-        query = supabase.table("guardrail_events").select("*")
-        if action:
-            query = query.eq("action", action)
+        query = supabase.table("ai_audit_events").select("*")
+        if event_type:
+            query = query.eq("event_type", event_type)
+        if status:
+            query = query.eq("status", status)
         result = query.order("created_at", desc=True).order("id", desc=True).range(offset, offset + limit).execute()
     except Exception:
-        logging.getLogger(__name__).error("Guardrail history unavailable; check migration and database access.")
-        raise HTTPException(status_code=503, detail="Guardrail history is unavailable. Check that the guardrail events migration has been applied.")
+        logging.getLogger(__name__).error("AI audit history unavailable; check migration and database access.")
+        raise HTTPException(status_code=503, detail="AI audit history is unavailable. Check that the AI audit events table has been applied.")
     rows = result.data or []
     return {"events": rows[:limit], "has_more": len(rows) > limit}

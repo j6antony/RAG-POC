@@ -171,7 +171,7 @@ export default function App() {
       <ConversationSidebar conversations={conversations} activeId={conversationId} loading={historyLoading} error={historyError} openingId={openingId} disabled={pending} onOpen={openConversation} onNew={resetChat} onRefresh={loadConversations} />
       <main id="main" className="main-panel">
         <div className="chat-layout">
-          <header className="conversation-header"><div><h1>Document chat</h1><p className="account-caption">{user.name} <span>· Demo session</span></p></div><div className="header-actions">{accessLevel === 3 && <button className="new-chat" onClick={() => setPage('guardrails')}>Guardrail activity</button>}<button className="new-chat" onClick={resetChat}>New conversation</button><button className="new-chat" onClick={signOut}>Sign out</button></div></header>
+          <header className="conversation-header"><div><h1>Document chat</h1><p className="account-caption">{user.name} <span>· Demo session</span></p></div><div className="header-actions">{accessLevel === 3 && <button className="new-chat" onClick={() => setPage('guardrails')}>AI Governance</button>}<button className="new-chat" onClick={resetChat}>New conversation</button><button className="new-chat" onClick={signOut}>Sign out</button></div></header>
           {openingId && <p className="document-status" role="status">Opening conversation…</p>}
           <ChatWindow messages={messages} pending={pending} progress={progress} failed={Boolean(error)} onSelectQuestion={sendMessage} examples={exampleQuestions} />
           {error && <div className="error-notice" role="alert">{error.text}<button onClick={() => error.conversation ? openConversation(error.conversation) : sendMessage(error.question, true)}>Retry</button></div>}

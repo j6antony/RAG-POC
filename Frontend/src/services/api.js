@@ -173,12 +173,13 @@ export async function getAccess(signal) {
   return data.access_level;
 }
 
-export async function getGuardrailEvents({ offset = 0, action = '', signal } = {}) {
+export async function getAuditEvents({ offset = 0, eventType = '', status = '', signal } = {}) {
   const params = new URLSearchParams({ offset: String(offset), limit: '25' });
-  if (action) params.set('action', action);
-  const response = await fetch(`${api_url}/admin/guardrail-events?${params}`, { headers: { Autherization: `Bearer ${getToken()}` }, signal });
+  if (eventType) params.set('event_type', eventType);
+  if (status) params.set('status', status);
+  const response = await fetch(`${api_url}/admin/audit-events?${params}`, { headers: { Autherization: `Bearer ${getToken()}` }, signal });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.detail || 'Unable to load guardrail events.');
-  if (!Array.isArray(data?.events) || typeof data.has_more !== 'boolean') throw new Error('Invalid guardrail events response.');
+  if (!response.ok) throw new Error(data?.detail || 'Unable to load AI audit events.');
+  if (!Array.isArray(data?.events) || typeof data.has_more !== 'boolean') throw new Error('Invalid AI audit events response.');
   return data;
 }

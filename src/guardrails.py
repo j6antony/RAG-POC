@@ -6,7 +6,7 @@ risk by validating tool inputs, bounding untrusted content, and clearly marking
 external/retrieved data as data rather than instructions.
 """
 
-from guardrail_audit import record_hit
+from guardrail_audit import record_hit, record_event
 import re
 from typing import Any
 from google import genai
@@ -100,10 +100,15 @@ async def check_company_relevance(request):
     )
     prompt = RELEVANCE_PROMPT.format(message=request)
 
-    response = await client.aio.models.generate_content(
-        model="gemini-3.5-flash-lite",
-        contents=prompt
-    )
+    model = "gemini-3.5-flash-lite"
+    record_event(event_type="model_called", status="started", source="relevance_check", model=model)
+    try:
+        response = await client.aio.models.generate_content(model=model, contents=prompt)
+    except Exception as error:
+        record_event(event_type="model_called", status="failed", source="relevance_check", model=model,
+                     details={"error_type": type(error).__name__})
+        raise
+    record_event(event_type="model_called", source="relevance_check", model=model)
     print("SCOPE INPUT:", request)
     print("SCOPE RAW RESPONSE:", response.text)
 

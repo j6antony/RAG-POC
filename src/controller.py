@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from google import genai
 from google.genai import errors, types
 
+from guardrail_audit import record_event
 from analysis_agent import AnalysisAgent
 from tools import Tools
 from web import Web
@@ -500,6 +501,7 @@ Current request:
                     supabase=supabase,
                 )
 
+            record_event(event_type="response_generated", source="coordinator", model=MODEL)
             return {
                 "answer": answer,
                 "images": list(tool_handler.images.values()),
@@ -514,6 +516,7 @@ Current request:
 
             print(f"[COORDINATOR] Tool selected: {name} (round {tool_round})")
 
+            record_event(event_type="tool_called", status="started", source="coordinator", tool=name)
             try:
                 if name == "search_internal":
 
@@ -567,9 +570,13 @@ Current request:
                     )
 
                 else:
-                    result = {"error": f"Unknown or unavailable tool: {name}"}
+                    raise ValueError("Unknown or unavailable tool")
+
+                record_event(event_type="tool_called", tool=name, source="coordinator")
 
             except Exception as exc:
+                record_event(event_type="tool_called", status="failed", tool=name, source="coordinator",
+                             details={"error_type": type(exc).__name__})
                 print(f"[COORDINATOR] {name} failed: {exc}")
                 result = {"error": f"{name} failed: {exc}"}
 
@@ -584,6 +591,8 @@ Current request:
             types.Content(role="user", parts=tool_response_parts)
         )
 
+    record_event(event_type="response_generated", status="failed", source="coordinator",
+                 details={"reason": "tool_call_limit"})
     print("[COORDINATOR] Tool-call limit reached")
     return {
         "answer": "I couldn't complete the request within the tool-call limit.",
@@ -593,15 +602,25 @@ Current request:
 
 async def call_gemini_with_retry(client, contents, config):
     for attempt in range(3):
+        record_event(event_type="model_called", status="started", source="coordinator", model=MODEL,
+                     details={"attempt": attempt + 1})
         try:
-            return await asyncio.to_thread(
+            response = await asyncio.to_thread(
                 client.models.generate_content,
                 model=MODEL,
                 contents=contents,
                 config=config,
             )
 
-        except errors.APIError as error:
+            record_event(event_type="model_called", source="coordinator", model=MODEL,
+                         details={"attempt": attempt + 1})
+            return response
+
+        except Exception as error:
+            record_event(event_type="model_called", status="failed", source="coordinator", model=MODEL,
+                         details={"attempt": attempt + 1, "error_type": type(error).__name__})
+            if not isinstance(error, errors.APIError):
+                raise
             if error.code not in (429, 500, 502, 503, 504):
                 raise
             if attempt == 2:
