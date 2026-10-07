@@ -13,6 +13,10 @@ export default function DocumentPanel() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const loadRequest = useRef(0);
+  const [classification, stClassification] = useState('internal');
+  const [containsSensitiveData, setContainsSensitiveData] = useState(false);
+
+
 
   async function loadKnowledge() {
     const requestId = ++loadRequest.current;
@@ -50,7 +54,7 @@ export default function DocumentPanel() {
     setNotice('');
 
     try {
-      await uploadFile(file, accessLevel);
+      await uploadFile(file, accessLevel, classification, containsSensitiveData);
       setNotice(`Uploaded ${file.name}.`);
       await loadKnowledge();
     } catch (error) {
@@ -67,6 +71,28 @@ export default function DocumentPanel() {
   return (
     <aside className="document-panel">
       <h2>Knowledge Base</h2>
+      <label className='document-access'>
+        Data classification
+        <select
+          value={classification}
+          onChange={(event) => setClassification(event.target.value)}
+          disabled={uploading}
+        >
+          <option value="public">Public</option>
+          <option value="internal">Internal</option>
+          <option value="confidential">Confidential</option>
+          <option value="restricted">Restricted</option>
+        </select>        
+      </label>
+
+      <label>
+        <input
+          type='checkbox'
+          checked={containsSensitiveData}
+          onChange={(event)=>setContainsSensitiveData(event.target.checked)}
+        />
+        Contains Sensitive Data
+      </label>
 
       <label className="document-access" htmlFor="document-access">
         File access level

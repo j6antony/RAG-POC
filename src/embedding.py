@@ -19,7 +19,7 @@ class Embed:
     def __init__(self):
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
-    def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int, document_id, chunks=None):
+    def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int, document_id,classification, contains_sensitive_data=False, chunks=None):
         print("started embedding")
 
         if chunks is None:
@@ -43,6 +43,8 @@ class Embed:
                     "text": chunk.page_content,
                     "owner_id": str(id),
                     "access_level": access_level,
+                    "classification": classification,
+                    "contains_sensitive_data": contains_sensitive_data,
                     **{key: chunk.metadata[key] for key in ("page", "image_ids") if key in chunk.metadata}
                 }
             })

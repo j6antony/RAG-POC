@@ -30,12 +30,14 @@ export async function askQuestion(question, conversationId, { onProgress, signal
 function getToken() {
   return localStorage.getItem("access_token");
 }
-export async function uploadFile(file, accessLevel = 1) {
+export async function uploadFile(file, accessLevel = 1, classification = 'internal', containsSensitiveData = false) {
   // the reason we need to use a formdata here is becuase unlike with text, numbers and stuff you cannot just stringify the json here with files
   const formData = new FormData();
 
   formData.append("file", file);
   formData.append("access_level", String(accessLevel));
+  formData.append("classification", String(classification));
+  formData.append("contains_sensitive_data", String(containsSensitiveData));
 
   const response = await fetch(`${api_url}/upload`, {
     method: 'POST',

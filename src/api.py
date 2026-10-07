@@ -177,7 +177,7 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
 
 #response on backend when a file is uploaded
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...), autherization: str = Header(...), access_level: int = Form(...)):
+async def upload_file(file: UploadFile = File(...), autherization: str = Header(...), access_level: int = Form(...), classification: str = Form("internal"), contains_sensitive_data: bool = Form(False)):
     user = get_current_user(autherization)
     user_access = get_user_access(supabase, user.id)
     if user_access not in [1, 2, 3]:
@@ -203,12 +203,38 @@ async def upload_file(file: UploadFile = File(...), autherization: str = Header(
             raise ValueError("The file is empty.")
     except (ValueError, UnicodeDecodeError) as error:
         raise HTTPException(status_code=400, detail=str(error))
+    CLASSIFICATIONS = {
+        "public",
+        "internal",
+        "confidential",
+        "restricted"
+    }
+
+    CLASSIFICATIONS_LEVELS = {
+        "public": 1,
+        "internal": 1,
+        "confidential": 2,
+        "restricted": 3
+    }
+
+    required_level = CLASSIFICATIONS_LEVEL[classification]
+    if access_level < required_level:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{classification.title()} documents require access level of {required_level} or higher"
+        )
     if access_level == 1:
         visibility = "user"
     elif access_level == 2:
         visibility = "manager"
     else:
         visibility = "admin"
+    classification = classification.lower().strip()
+    if classification not in CLASSIFICATIONS:
+        raise HTTPException(
+            status_code= 400,
+            detail="Invalid document classification"
+        )
     embedder = get_embedder()
     vectorDB = get_vectorDB()
     response = (
@@ -217,7 +243,9 @@ async def upload_file(file: UploadFile = File(...), autherization: str = Header(
         .insert({
             "filename": file.filename,
             "uploaded_by": str(user.id),
-            "visibility": visibility
+            "visibility": visibility,
+            "classification": classification,
+            "contains_sensitive_data": contains_sensitive_data
         }).execute()
     )
     document_id = response.data[0]["id"]
@@ -226,9 +254,9 @@ async def upload_file(file: UploadFile = File(...), autherization: str = Header(
         if images:
             paths = store_images(supabase, document_id, images)
         if chunks is None:
-            embedder.embed(file.filename, contents, user.id, vectorDB, access_level, document_id)
+            embedder.embed(file.filename, contents, user.id, vectorDB, access_level, document_id, classification, contains_sensitive_data)
         else:
-            embedder.embed(file.filename, contents, user.id, vectorDB, access_level, document_id, chunks=chunks)
+            embedder.embed(file.filename, contents, user.id, vectorDB, access_level, document_id,classification, contains_sensitive_data, chunks=chunks)
     except Exception as error:
         logging.exception("Document indexing failed for %s", document_id)
         # Remove vectors first so a failed upload cannot remain searchable.
@@ -242,6 +270,8 @@ async def upload_file(file: UploadFile = File(...), autherization: str = Header(
             "document_id": document_id,
             "filename": file.filename,
             "visibility": visibility,
+            "classification": classification,
+            "contains_senstive_data": contains_sensitive_data,
             "image_count": len(images)
         }
 @app.post("/login")
@@ -318,7 +348,7 @@ async def get_knowledge(
     allowed = [name for name, level in VISIBILITY_LEVELS.items() if level <= user_access]
     response = (
         supabase.table("knowledge_documents")
-        .select("id,filename,uploaded_by,visibility,created_at")
+        .select("id,filename,uploaded_by,visibility,classification,contains_sensitive_data,created_at")
         .in_("visibility", allowed)
         .order("created_at", desc=True)
         .execute()
