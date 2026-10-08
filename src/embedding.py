@@ -11,7 +11,6 @@ Issues:
 from huggingface_hub import InferenceClient
 from chunk import Chunk
 from vectordb import VectorDB
-from uuid import uuid4
 import os
 import numpy as np
 
@@ -26,19 +25,20 @@ class Embed:
         self.model_NAME ="BAAI/bge-small-en-v1.5"
         self.chunk = Chunk()
     def encode(self, texts):
+        is_single = isinstance(texts, str)
         embeddings = self.client.feature_extraction(
-            texts,
-            model=self.model_NAME
+            texts, model=self.model_NAME
         )
-        emebddings = np.asarray(embeddings, dtype=np.float32)
-
-        if emebddings.ndim == 1:
-            embeddings = emebddings.reshape(1, -1)
+        embeddings = np.asarray(embeddings, dtype=np.float32)
+        if embeddings.ndim == 1:
+            embeddings = embeddings.reshape(1, -1)
         if embeddings.ndim != 2 or embeddings.shape[1] != 384:
-            raise ValueError(
-                f"Unexpected embedding shape: {emebddings.shape}"
-            )
-        return emebddings
+            raise ValueError(f"Unexpected embedding shape: {embeddings.shape}")
+        expected = 1 if is_single else len(texts)
+        if embeddings.shape[0] != expected:
+            raise ValueError(f"Expected {expected} vectors, got {embeddings.shape[0]}")
+        return embeddings
+
     def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int, document_id,classification, contains_sensitive_data=False, chunks=None):
         print("started embedding")
 
