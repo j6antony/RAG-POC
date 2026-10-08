@@ -33,4 +33,7 @@ class Web:
         return pages
     def search_embed(self, pages, user_id: str, user_access: int):
         for page in pages:
-            self.embedder.embed(\n                page["title"], page["text"].encode("utf-8"), user_id,\n                self.vectorDB, user_access, str(uuid4()), "internal"\n            )
+            self.embedder.embed(
+                page["title"], page["text"].encode("utf-8"), user_id,
+                self.vectorDB, user_access, str(uuid4()), "internal"
+            )
