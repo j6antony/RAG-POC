@@ -56,6 +56,8 @@ app.add_middleware(
         "https://rag-poc-chi.vercel.app",
         "https://rag-bbl27eqt1-johan-antonys-projects.vercel.app"
     ],
+    # Vercel generates a new unique subdomain for each preview deployment.
+    allow_origin_regex=r"https://rag-[a-z0-9]+-johan-antonys-projects\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
