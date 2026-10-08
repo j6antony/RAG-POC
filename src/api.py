@@ -78,8 +78,8 @@ class ChatRequest(BaseModel):
     #history: list[HistoryMessage] removing react passing chat history
     conversation_id: UUID
 @app.post("/chat")
-async def chat(request: ChatRequest, autherization: str = Header(...)):
-    user = get_current_user(autherization)
+async def chat(request: ChatRequest, authorization: str = Header(...)):
+    user = get_current_user(authorization)
     user_access = get_user_access(supabase, user.id)
 
     if user_access not in [1, 2, 3]:
@@ -183,8 +183,8 @@ async def chat(request: ChatRequest, autherization: str = Header(...)):
 
 #response on backend when a file is uploaded
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...), autherization: str = Header(...), access_level: int = Form(...), classification: str = Form("internal"), contains_sensitive_data: bool = Form(False)):
-    user = get_current_user(autherization)
+async def upload_file(file: UploadFile = File(...), authorization: str = Header(...), access_level: int = Form(...), classification: str = Form("internal"), contains_sensitive_data: bool = Form(False)):
+    user = get_current_user(authorization)
     user_access = get_user_access(supabase, user.id)
     if user_access not in [1, 2, 3]:
         raise HTTPException(status_code=400, detail="Invalid Access Level")
@@ -343,9 +343,9 @@ def signup(input: info):
     }
 @app.get("/knowledge")
 async def get_knowledge(
-    autherization: str = Header(...)
+    authorization: str = Header(...)
 ):
-    user = get_current_user(autherization)
+    user = get_current_user(authorization)
 
     user_access = get_user_access(supabase, user.id)
     if user_access not in [1, 2, 3]:
@@ -371,8 +371,8 @@ async def get_knowledge(
 
 
 @app.get("/knowledge/images/{image_id}")
-def get_knowledge_image(image_id: UUID, autherization: str = Header(...)):
-    user = get_current_user(autherization)
+def get_knowledge_image(image_id: UUID, authorization: str = Header(...)):
+    user = get_current_user(authorization)
     access = get_user_access(supabase, user.id)
     if access not in (1, 2, 3):
         raise HTTPException(status_code=403, detail="User has no valid access level")
@@ -387,8 +387,8 @@ def get_knowledge_image(image_id: UUID, autherization: str = Header(...)):
     return Response(content, media_type="image/png", headers={"Cache-Control": "private, no-store"})
 
 @app.get("/conversations")
-def get_conversations(autherization: str = Header(...)):
-    user = get_current_user(authorization=autherization)
+def get_conversations(authorization: str = Header(...)):
+    user = get_current_user(authorization=authorization)
     result = (
         supabase.table("conversations").select("id", "name", "created_at").eq("user_id", str(user.id)).order("created_at", desc=True).execute()
     )
@@ -397,8 +397,8 @@ def get_conversations(autherization: str = Header(...)):
     }
 
 @app.get("/conversations/{conversation_id}/messages")
-def conversation_messages(conversation_id, autherization: str = Header(...)):
-    user = get_current_user(autherization)
+def conversation_messages(conversation_id, authorization: str = Header(...)):
+    user = get_current_user(authorization)
     #check if the conversation exists first
     conversation = supabase.table("conversations").select("id").eq("id", str(conversation_id)).eq("user_id", str(user.id)).limit(1).execute()
     if not conversation.data:
@@ -418,20 +418,20 @@ def conversation_messages(conversation_id, autherization: str = Header(...)):
     }
 
 @app.get("/me/access")
-def current_access(autherization: str = Header(...)):
-    user = get_current_user(autherization)
+def current_access(authorization: str = Header(...)):
+    user = get_current_user(authorization)
     return {"access_level": get_user_access(supabase, user.id)}
 
 
 @app.get("/admin/audit-events")
 def audit_events(
-    autherization: str = Header(...),
+    authorization: str = Header(...),
     offset: int = Query(0, ge=0),
     limit: int = Query(25, ge=1, le=100),
     event_type: Literal["request_started", "request_failed", "model_called", "tool_called", "document_retrieved", "guardrail", "response_generated"] | None = None,
     status: Literal["started", "success", "failed", "flagged", "blocked"] | None = None,
 ):
-    user = get_current_user(autherization)
+    user = get_current_user(authorization)
     if get_user_access(supabase, user.id) != 3:
         raise HTTPException(status_code=403, detail="Admin access is required.")
     try:
