@@ -1,6 +1,6 @@
 import { readChatStream } from './sse.js';
 
-const api_url = "http://127.0.0.1:8000";
+const api_url = import.meta.env.VITE_API_URL;
 
 export async function askQuestion(question, conversationId, { onProgress, signal } = {}) {
   const response = await fetch(`${api_url}/chat`, {
