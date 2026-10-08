@@ -8,17 +8,37 @@ Issues:
 - the list I have created here I am just using that as like the vector database not sure if this is correct
 - do i have to chunk the users request, like what if it is very huge
 """
-from sentence_transformers import SentenceTransformer
+from huggingface_hub import InferenceClient
 from chunk import Chunk
 from vectordb import VectorDB
 from uuid import uuid4
+import os
+import numpy as np
 
 
 class Embed:
 
     def __init__(self):
-        self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        self.client = InferenceClient(
+            provider="hf-inference",
+            api_key=os.environ["HF_TOKEN"]
+        )
+        self.model_NAME ="BAAI/bge-small-en-v1.5"
         self.chunk = Chunk()
+    def encode(self, texts):
+        embeddings = self.client.feature_extraction(
+            texts,
+            model=self.model_NAME
+        )
+        emebddings = np.asarray(embeddings, dtype=np.float32)
+
+        if emebddings.ndim == 1:
+            embeddings = emebddings.reshape(1, -1)
+        if embeddings.ndim != 2 or embeddings.shape[1] != 384:
+            raise ValueError(
+                f"Unexpected embedding shape: {emebddings.shape}"
+            )
+        return emebddings
     def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int, document_id,classification, contains_sensitive_data=False, chunks=None):
         print("started embedding")
 
@@ -29,7 +49,7 @@ class Embed:
 
         texts = [chunk.page_content for chunk in chunks]
 
-        embeddings = self.model.encode(texts)
+        embeddings = self.encode(texts)
 
         vectors = []
 
@@ -50,9 +70,6 @@ class Embed:
             })
         # the reason this is required is sometimes the scraped website may give you no data then there is not point in doing and uspert and the uspert will fail which is why I 
         # have implemented this saftey check. The problem with this is that the websearch will give you nothing so the LLM will really not get any quality context
-        if not vectors:
-            print(f"No vectors generated for {filename}, skipping upsert")
-            return []
 
         vectorDB.upsert(
             vectors=vectors,
@@ -60,6 +77,6 @@ class Embed:
         )
         print("finished embedding")
     def embed_request(self, text):
-        return self.model.encode(text)
+        return self.encode(text)[0]
 
 
