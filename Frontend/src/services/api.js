@@ -1,6 +1,10 @@
 import { readChatStream } from './sse.js';
 
-const api_url = import.meta.env.VITE_API_URL;
+const api_url = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, '');
+
+if (!api_url) {
+  console.error('Missing VITE_API_URL: configure the Render backend URL in Vercel environment variables and redeploy.');
+}
 
 export async function askQuestion(question, conversationId, { onProgress, signal } = {}) {
   const response = await fetch(`${api_url}/chat`, {
@@ -9,7 +13,7 @@ export async function askQuestion(question, conversationId, { onProgress, signal
     headers: {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
-      Autherization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${getToken()}`,
     },
     body: JSON.stringify({ message: question, conversation_id: conversationId }),
   });
@@ -41,7 +45,7 @@ export async function uploadFile(file, accessLevel = 1, classification = 'intern
 
   const response = await fetch(`${api_url}/upload`, {
     method: 'POST',
-    headers: {'Autherization': `Bearer ${getToken()}`,},
+    headers: {'Authorization': `Bearer ${getToken()}`,},
     body: formData,
   });
 
@@ -91,7 +95,7 @@ export async function getKnowledge() {
       method: 'GET',
 
       headers: {
-        'Autherization': `Bearer ${getToken()}`,
+        'Authorization': `Bearer ${getToken()}`,
       }
     }
   );
@@ -116,7 +120,7 @@ export async function getKnowledge() {
 
 export async function getKnowledgeImage(imageId, signal) {
   const response = await fetch(`${api_url}/knowledge/images/${encodeURIComponent(imageId)}`, {
-    headers: { Autherization: `Bearer ${getToken()}` }, signal,
+    headers: { Authorization: `Bearer ${getToken()}` }, signal,
   });
   if (!response.ok) throw new Error('Image unavailable or access has changed.');
   return response.blob();
@@ -126,7 +130,7 @@ export async function getKnowledgeImage(imageId, signal) {
 export async function getConversation() {
   const response = await fetch(`${api_url}/conversations`, {
     headers: {
-      Autherization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${getToken()}`,
     },
   });
   const data = await response.json().catch(()=>null);
@@ -147,7 +151,7 @@ export async function getConversationMessages(conversationId) {
     `${api_url}/conversations/${encodeURIComponent(conversationId)}/messages`,
     {
       headers: {
-        Autherization:  `Bearer ${getToken()}`,
+        Authorization:  `Bearer ${getToken()}`,
       },
     }
   );
@@ -167,7 +171,7 @@ export async function getConversationMessages(conversationId) {
 }
 
 export async function getAccess(signal) {
-  const response = await fetch(`${api_url}/me/access`, { headers: { Autherization: `Bearer ${getToken()}` }, signal });
+  const response = await fetch(`${api_url}/me/access`, { headers: { Authorization: `Bearer ${getToken()}` }, signal });
   const data = await response.json().catch(() => null);
   if (!response.ok || ![1, 2, 3].includes(data?.access_level)) throw new Error('Unable to verify account access.');
   return data.access_level;
@@ -177,7 +181,7 @@ export async function getAuditEvents({ offset = 0, eventType = '', status = '', 
   const params = new URLSearchParams({ offset: String(offset), limit: '25' });
   if (eventType) params.set('event_type', eventType);
   if (status) params.set('status', status);
-  const response = await fetch(`${api_url}/admin/audit-events?${params}`, { headers: { Autherization: `Bearer ${getToken()}` }, signal });
+  const response = await fetch(`${api_url}/admin/audit-events?${params}`, { headers: { Authorization: `Bearer ${getToken()}` }, signal });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.detail || 'Unable to load AI audit events.');
   if (!Array.isArray(data?.events) || typeof data.has_more !== 'boolean') throw new Error('Invalid AI audit events response.');
