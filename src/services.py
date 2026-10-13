@@ -8,4 +8,4 @@ def get_embedder():
 
 @lru_cache
 def get_vectorDB():
-    return VectorDB("rag-poc", 384)
+    return VectorDB("rag-poc-gemini", 768)
