@@ -1,14 +1,6 @@
-"""
-- For embedding we are not embedding the metadata of the chunks but simply the text of the individual chunks
-- For this POC we are choosing to use a locally run embedder but for real time usage it will likley be an API
-- reason we are doing this is becuase other has a cost attached to it
-- The model we are going with BAAI/bge-small-en-v1.5
-- ensure that the same model is used to embed the request as well
-Issues:
-- the list I have created here I am just using that as like the vector database not sure if this is correct
-- do i have to chunk the users request, like what if it is very huge
-"""
-from huggingface_hub import InferenceClient
+"""Generate document and query embeddings via the hosted Gemini API."""
+from google import genai
+from google.genai import types
 from chunk import Chunk
 from vectordb import VectorDB
 import os
@@ -18,25 +10,33 @@ import numpy as np
 class Embed:
 
     def __init__(self):
-        self.client = InferenceClient(
-            provider="hf-inference",
-            api_key=os.environ["HF_TOKEN"]
-        )
-        self.model_NAME ="BAAI/bge-small-en-v1.5"
+        self.client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        self.model_NAME = "gemini-embedding-001"
+        self.dimensions = 768
         self.chunk = Chunk()
-    def encode(self, texts):
+
+    def encode(self, texts, task_type="RETRIEVAL_DOCUMENT"):
         is_single = isinstance(texts, str)
-        embeddings = self.client.feature_extraction(
-            texts, model=self.model_NAME
-        )
-        embeddings = np.asarray(embeddings, dtype=np.float32)
-        if embeddings.ndim == 1:
-            embeddings = embeddings.reshape(1, -1)
-        if embeddings.ndim != 2 or embeddings.shape[1] != 384:
+        texts = [texts] if is_single else list(texts)
+        if not texts:
+            return np.empty((0, self.dimensions), dtype=np.float32)
+
+        vectors = []
+        for offset in range(0, len(texts), 32):
+            batch = texts[offset:offset + 32]
+            response = self.client.models.embed_content(
+                model=self.model_NAME,
+                contents=batch,
+                config=types.EmbedContentConfig(
+                    task_type=task_type,
+                    output_dimensionality=self.dimensions,
+                ),
+            )
+            vectors.extend(item.values for item in response.embeddings)
+
+        embeddings = np.asarray(vectors, dtype=np.float32)
+        if embeddings.shape != (len(texts), self.dimensions):
             raise ValueError(f"Unexpected embedding shape: {embeddings.shape}")
-        expected = 1 if is_single else len(texts)
-        if embeddings.shape[0] != expected:
-            raise ValueError(f"Expected {expected} vectors, got {embeddings.shape[0]}")
         return embeddings
 
     def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int, document_id,classification, contains_sensitive_data=False, chunks=None):
@@ -77,6 +77,6 @@ class Embed:
         )
         print("finished embedding")
     def embed_request(self, text):
-        return self.encode(text)[0]
+        return self.encode(text, task_type="RETRIEVAL_QUERY")[0]
 
 
