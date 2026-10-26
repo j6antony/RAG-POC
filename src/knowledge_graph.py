@@ -25,8 +25,8 @@ class KnowledgeGraph:
             database_=self.database
         )
 
-    def save(self, entities, relations, document_id, chunk_id, owner_id, access_level):
-        entity_record = []
+    def save(self, entities, relations, document_id, chunk_id, owner_id, access_level, classification):
+        entity_records = []
         names = {}
 
         for entity_type, values in entities.get("entities", {}).items():
@@ -40,7 +40,7 @@ class KnowledgeGraph:
                 normalized = name.casefold()
                 key = f"{owner_id}:{entity_type}:{normalized}"
 
-                entity_record.append({
+                entity_records.append({
                     "key": key,
                     "name": name, 
                     "type": entity_type
@@ -149,6 +149,7 @@ class KnowledgeGraph:
         self.driver.close()
 
     def search(self, entity_name: str, user_id: str, access_level: int, limit: int = 30):
+        entity_name = entity_name.strip()
         if len(entity_name) < 2:
             return {"nodes": [], "links": []}
 
@@ -185,7 +186,7 @@ class KnowledgeGraph:
             entity_name = entity_name,
             user_id = str(user_id),
             access_level = access_level,
-            limit = min(max(limit, 1), 100)
+            limit = min(max(limit, 1), 100),
             database_=self.database,
             routing_ = "r"
         )
