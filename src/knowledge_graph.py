@@ -145,6 +145,27 @@ class KnowledgeGraph:
             document_id=document_id
         ).consume()
 
+    def delete_document(self, document_id):
+        self.driver.execute_query(
+            """
+            MATCH (c:Chunk {document_id: $document_id})
+            OPTIONAL MATCH (c)-[:MENTIONS]->(e:Entity)
+            WITH collect(DISTINCT c) AS chunks, collect(DISTINCT e) AS entities
+            UNWIND chunks AS c
+            OPTIONAL MATCH ()-[r:RELATED_TO {chunk_id: c.id}]->()
+            DELETE r
+            WITH c, entities
+            DETACH DELETE c
+            WITH entities
+            UNWIND entities AS e
+            WITH DISTINCT e
+            WHERE NOT EXISTS { MATCH (:Chunk)-[:MENTIONS]->(e) }
+            DETACH DELETE e
+            """,
+            document_id=str(document_id),
+            database_=self.database,
+        )
+
     def close(self):
         self.driver.close()
 
