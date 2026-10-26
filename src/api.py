@@ -16,7 +16,7 @@ from document_images import extract_pdf, store_images, can_view_document, BUCKET
 from guardrail_audit import begin_audit, end_audit, persist_hits, record_event
 from guardrails import inspect_input
 from controller import run_agent
-from services import get_embedder, get_vectorDB
+from services import get_embedder, get_vectorDB, get_knowledge_graph
 from authentification import get_user_access
 from fastapi.responses import StreamingResponse
 
@@ -270,6 +270,10 @@ async def upload_file(file: UploadFile = File(...), authorization: str = Header(
         logging.exception("Document indexing failed for %s", document_id)
         # Remove vectors first so a failed upload cannot remain searchable.
         vectorDB.index.delete(filter={"document_id": {"$eq": str(document_id)}}, namespace="company")
+        try:
+            get_knowledge_graph().delete_document(document_id)
+        except Exception:
+            logging.exception("Graph cleanup failed for %s", document_id)
         if paths:
             supabase.storage.from_(BUCKET).remove(paths)
         supabase.table("knowledge_documents").delete().eq("id", document_id).execute()
