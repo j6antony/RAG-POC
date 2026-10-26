@@ -2,12 +2,13 @@ from guardrail_audit import record_event
 from document_images import image_references
 from web import Web
 from vectordb import VectorDB
-from services import get_embedder, get_vectorDB
+from services import get_embedder, get_vectorDB, get_knowledge_graph
 from guardrails import secure_untrusted_result, validate_fact, validate_tool_query
 import asyncio
 from google import genai
 from google.genai import types
 import supabase
+
 
 
 class Tools:
@@ -175,3 +176,15 @@ class Tools:
             "key": key,
             "value": value
         }
+    async def search_knowledge_graph(self, entity_name: str):
+
+        graph = get_knowledge_graph()
+
+        result = await asyncio.to_thread(
+            graph.search,
+            entity_name=entity_name,
+            user_id=self.user_id,
+            access_level=self.user_access
+        )
+
+        return result

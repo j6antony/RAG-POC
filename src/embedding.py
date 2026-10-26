@@ -12,6 +12,8 @@ from sentence_transformers import SentenceTransformer
 from chunk import Chunk
 from vectordb import VectorDB
 from uuid import uuid4
+from services import get_gliner, get_knowledge_graph
+
 
 
 class Embed:
@@ -19,6 +21,8 @@ class Embed:
     def __init__(self):
         self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.chunk = Chunk()
+        self.gliner = get_gliner()
+        self.knowledge_graph = get_knowledge_graph()
     def embed(self, filename, contents, id, vectorDB: VectorDB, access_level: int, document_id,classification, contains_sensitive_data=False, chunks=None):
         print("started embedding")
 
@@ -30,10 +34,34 @@ class Embed:
         texts = [chunk.page_content for chunk in chunks]
 
         embeddings = self.model.encode(texts)
-
         vectors = []
 
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            #save knowledge graph
+            text = chunk.page_content
+            entities = self.gliner.extract_entities(
+                text,
+                ["person", "department", "project", "technology"]
+            )
+            relations = self.gliner.extract_relations(
+                text,
+                [
+                    "works_at",
+                    "developed",
+                    "is_a"
+                ]
+            )
+
+            self.knowledge_graph.save(
+                entities=entities,
+                relations=relations,
+                document_id=document_id,
+                chunk_id=f"{document_id}-{i}",
+                owner_id=id,
+                access_level=access_level,
+                classification=classification
+            )
+
             vectors.append({
                 "id": f"{document_id}-{i}",
                 "values": embedding.tolist(),
