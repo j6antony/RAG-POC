@@ -518,6 +518,9 @@ Current request:
         f"access={user_access} chat_delegation={allow_chat_delegation}"
     )
 
+    graph_nodes = {}
+    graph_links = {}
+
     for tool_round in range(1, MAX_TOOL_CALLS + 1):
         response = await call_gemini_with_retry(
             client,
@@ -547,11 +550,13 @@ Current request:
             return {
                 "answer": answer,
                 "images": list(tool_handler.images.values()),
+                "graph": {
+                    "nodes": list(graph_nodes.values()),
+                    "links": list(graph_links.values()),
+                },
             }
 
         tool_response_parts = []
-        graph_nodes = {}
-        graph_links = {}
 
         for function_call in function_calls:
             name = function_call.name
