@@ -184,7 +184,7 @@ class Tools:
             graph.search,
             entity_name=entity_name,
             user_id=self.user_id,
-            access_level=self.user_access
+            access_level=self.access
         )
 
         return result
